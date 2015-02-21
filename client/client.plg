@@ -1,0 +1,94 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: client - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\8AA8~1\AppData\Local\Temp\RSP1016.tmp" with contents
+[
+/nologo /ML /W3 /Gm /Gi /GX /ZI /Od /I ".\\" /I "..\engine" /I "..\common" /I "..\game_shared" /I ".\render" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "CLIENT_DLL" /FAs /Fa"..\temp\client\!debug/" /FR"..\temp\client\!debug/" /Fo"..\temp\client\!debug/" /Fd"..\temp\client\!debug/" /FD /c 
+"C:\Xash3D\source\xashmod\client\cdll_int.cpp"
+]
+Creating command line "cl.exe @C:\Users\8AA8~1\AppData\Local\Temp\RSP1016.tmp" 
+Creating temporary file "C:\Users\8AA8~1\AppData\Local\Temp\RSP1017.tmp" with contents
+[
+msvcrtd.lib user32.lib opengl32.lib glu32.lib /nologo /subsystem:windows /dll /incremental:yes /pdb:"..\temp\client\!debug/client.pdb" /debug /machine:I386 /nodefaultlib:"libc" /out:"..\temp\client\!debug/client.dll" /implib:"..\temp\client\!debug/client.lib" /libpath:"..\common\libs" 
+"\Xash3D\source\xashmod\temp\client\!debug\ammo.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\ammo_secondary.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\ammohistory.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\battery.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\cdll_int.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\common.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\death.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\flashlight.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\geiger.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\health.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\hud.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\hud_msg.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\hud_redraw.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\hud_update.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\input.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\inputw32.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\mathlib.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\matrix.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\menu.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\message.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\motd.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\parsemsg.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\parser.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\playermove.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_backend.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_beams.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_bloom.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_cull.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_debug.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_grass.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_light.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_main.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_mirror.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_misc.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_monitor.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_movie.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_opengl.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_particle.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_portal.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_shadows.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_sprite.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_studio.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_surf.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_tempents.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_view.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_warp.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\r_weather.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\saytext.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\scoreboard.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\status_icons.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\statusbar.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\stringlib.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\text_message.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\train.obj"
+"\Xash3D\source\xashmod\temp\client\!debug\utils.obj"
+]
+Creating command line "link.exe @C:\Users\8AA8~1\AppData\Local\Temp\RSP1017.tmp"
+Creating temporary file "C:\Users\8AA8~1\AppData\Local\Temp\RSP1018.bat" with contents
+[
+@echo off
+copy \Xash3D\source\xashmod\temp\client\!debug\client.dll "C:\Xash3D\xash\bin\client.dll"
+]
+Creating command line "C:\Users\8AA8~1\AppData\Local\Temp\RSP1018.bat"
+Compiling...
+cdll_int.cpp
+Linking...
+<h3>Output Window</h3>
+Performing Custom Build Step on \Xash3D\source\xashmod\temp\client\!debug\client.dll
+Скопировано файлов:         1.
+
+
+
+<h3>Results</h3>
+client.dll - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>
