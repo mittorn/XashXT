@@ -14,8 +14,11 @@
 #pragma once
 #endif
 
+
+#ifdef _WIN32
 #pragma warning (disable:4100)
 #pragma warning (disable:4514)
+#endif
 
 //-----------------------------------------------------------------------------
 // The CUtlBlockMemory class:

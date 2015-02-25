@@ -18,7 +18,7 @@ GNU General Public License for more details.
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include "recdefs.h"
+#include "port.h"
 #include <ctype.h>
 #include <string.h>
 #define stricmp strcmp

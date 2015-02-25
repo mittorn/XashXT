@@ -23,8 +23,11 @@
 #define DEG2RAD( x )	((float)(x) * (float)(M_PI / 180.f))
 #define Q_rint( x )		((x) < 0 ? ((int)((x)-0.5f)) : ((int)((x)+0.5f)))
 
+
+#ifdef _WIN32
 #pragma warning( disable : 4244 )	// disable 'possible loss of data converting float to int' warning message
 #pragma warning( disable : 4305 )	// disable 'truncation from 'const double' to 'float' warning message
+#endif
 
 #define _forceinline __attribute__((always_inline))
 

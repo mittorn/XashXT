@@ -7,7 +7,7 @@
 //#include <windows.h>
 
 #ifndef _WIN32
-#include "recdefs.h"
+#include "port.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -17,7 +17,9 @@
 #include <mathlib.h>
 #include <stringlib.h>
 
+#ifdef _WIN32
 #pragma warning(disable : 4244)	// MIPS
+#endif
 
 //============
 // UTIL_FileExtension

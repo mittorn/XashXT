@@ -23,7 +23,6 @@
 #include "parsemsg.h"
 #include "ammohistory.h"
 
-#define max(a, b)  (((a) > (b)) ? (a) : (b))
 
 int		g_weaponselect = 0;
 WEAPON		*gpActiveSel;	// NULL means off, 1 means just the menu bar, otherwise

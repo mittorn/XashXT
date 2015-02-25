@@ -20,7 +20,7 @@
 
 
 #ifndef _WIN32
-#include "recdefs.h"
+#include "port.h"
 #endif
 
 #include "hud.h"

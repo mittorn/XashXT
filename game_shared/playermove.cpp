@@ -14,7 +14,7 @@
 ****/
 
 #ifndef _WIN32
-#include "recdefs.h"
+#include "port.h"
 #define _cdecl
 
 #define strnicmp strncmp
@@ -52,7 +52,9 @@ extern enginefuncs_t g_engfuncs;
 
 static int pm_shared_initialized = 0;
 
+#ifdef _WIN32
 #pragma warning( disable : 4305 )
+#endif
 playermove_t *pmove = NULL;
 
 // Ducking time
@@ -103,9 +105,9 @@ playermove_t *pmove = NULL;
 #define PM_CHECKSTUCK_MINTIME			0.05f	// Don't check again too quickly.
 
 // double to float warning
+#ifdef _WIN32
 #pragma warning(disable : 4244)
-#define max(a, b)  (((a) > (b)) ? (a) : (b))
-#define min(a, b)  (((a) < (b)) ? (a) : (b))
+#endif
 // up / down
 #define	PITCH	0
 // left / right
