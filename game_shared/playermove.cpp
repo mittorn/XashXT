@@ -15,8 +15,6 @@
 
 #ifndef _WIN32
 #include "port.h"
-#define _cdecl
-
 #define strnicmp strncmp
 #endif
 

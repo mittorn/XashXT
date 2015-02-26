@@ -4,13 +4,11 @@
 //=======================================================================
 
 #define NOMINMAX
-//#include <windows.h>
 
-#ifndef _WIN32
-#include "port.h"
-#include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <ctype.h>
-
 #endif
 
 #include <stdio.h>

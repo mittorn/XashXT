@@ -29,7 +29,6 @@
 
 #ifndef _WIN32
 #include "port.h"
-#define _cdecl
 #endif
 
 #include "vector.h"

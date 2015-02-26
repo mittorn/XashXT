@@ -18,7 +18,6 @@ GNU General Public License for more details.
 
 #ifndef _WIN32
 #include "port.h"
-#define _cdecl
 #endif
 
 
@@ -27,7 +26,7 @@ GNU General Public License for more details.
 #include <stringlib.h>
 
 
-// Supergovno, peredacha CLIENT_DLL v g++ poteryalas, perevkl v rychnyu
+//solved
 
 // g-cont. Damn! stupid valve coders!!!
 

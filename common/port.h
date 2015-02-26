@@ -33,6 +33,7 @@ GNU General Public License for more details.
     #define _stdcall
     #define __stdcall
     #define __cdecl
+    #define _cdecl
     #define _inline	    inline
     #define O_BINARY    0		//In Linux O_BINARY didn't exist
 
