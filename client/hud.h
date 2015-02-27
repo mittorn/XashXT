@@ -25,12 +25,12 @@
 
 #include "wrect.h"
 
-//#include "windows.h"
 
-#ifndef _WIN32
-#include "port.h"
+#ifdef _WIN32
+#include "windows.h"
 #endif
 
+#include "port.h"
 #include "vector.h"
 #include "cdll_int.h"
 #include "cdll_dll.h"

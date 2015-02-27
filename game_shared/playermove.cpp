@@ -13,8 +13,8 @@
 *
 ****/
 
+
 #ifndef _WIN32
-#include "port.h"
 #define strnicmp strncmp
 #endif
 

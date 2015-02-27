@@ -6,10 +6,9 @@
 #define STRINGLIB_H
 
 #include <string.h>
-
+#include "port.h"
 
 #ifndef _WIN32
-#include "port.h"
 #include <stdarg.h>
 #endif
 

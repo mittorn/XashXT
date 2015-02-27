@@ -14,19 +14,16 @@ GNU General Public License for more details.
 */
 
 #define NOMINMAX
-//#include <windows.h>
 
-#ifndef _WIN32
-#include "port.h"
+#ifdef _WIN32
+#include <windows.h>
 #endif
 
-
+#include "port.h"
 #include <stdio.h>
 #include <vector.h>
 #include <stringlib.h>
 
-
-//solved
 
 // g-cont. Damn! stupid valve coders!!!
 

@@ -127,7 +127,12 @@ void V_Init( void )
 	cl_bobup		= CVAR_REGISTER( "cl_bobup","0.5", 0 );
 	cl_waterdist	= CVAR_REGISTER( "cl_waterdist","4", 0 );
 	cl_chasedist	= CVAR_REGISTER( "cl_chasedist","112", 0 );
-	cl_weaponlag	= CVAR_REGISTER( "cl_weaponlag", "0.3", FCVAR_ARCHIVE );
+
+    #if XT_FEATURES //non-canon :)
+    cl_weaponlag	= CVAR_REGISTER( "cl_weaponlag", "0.3", FCVAR_ARCHIVE );
+    #else
+    cl_weaponlag	= CVAR_REGISTER( "cl_weaponlag", "0", FCVAR_ARCHIVE );
+    #endif
 
 	// setup some engine cvars for custom rendering
 	mod_allow_materials = CVAR_GET_POINTER( "host_allow_materials" );

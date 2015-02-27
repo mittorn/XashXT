@@ -19,9 +19,6 @@
 //
 
 
-#ifndef _WIN32
-#include "port.h"
-#endif
 
 #include "hud.h"
 #include "utils.h"
