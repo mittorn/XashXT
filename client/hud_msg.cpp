@@ -19,7 +19,6 @@
 #include "utils.h"
 #include "parsemsg.h"
 #include "r_local.h"
-#include "r_weather.h"
 #include "r_efx.h"
 
 // CHud message handlers
@@ -305,28 +304,11 @@ int CHud :: MsgFunc_WeaponAnim( const char *pszName, int iSize, void *pbuf )
 
 int CHud :: MsgFunc_Particle( const char *pszName, int iSize, void *pbuf )
 {
-	BEGIN_READ( pszName, pbuf, iSize );
-
-	int entindex = READ_SHORT();
-	const char *sz = READ_STRING();
-	int attachment = READ_BYTE();
-
-	UTIL_CreateAurora( GET_ENTITY( entindex ), sz, attachment );
-
-	END_READ();
-	
 	return 1;
 }
 
 int CHud :: MsgFunc_KillPart( const char *pszName, int iSize, void *pbuf )
 {
-	BEGIN_READ( pszName, pbuf, iSize );
-	int entindex = READ_SHORT();
-
-	UTIL_RemoveAurora( GET_ENTITY( entindex ));
-
-	END_READ();
-	
 	return 1;
 }
 
@@ -352,11 +334,6 @@ int CHud :: MsgFunc_KillDecals( const char *pszName, int iSize, void *pbuf )
 
 int CHud :: MsgFunc_RainData( const char *pszName, int iSize, void *pbuf )
 {
-	BEGIN_READ( pszName, pbuf, iSize );
-
-	R_ParseRainMessage();
-
-	END_READ();	
 
 	return 1;
 }

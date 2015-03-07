@@ -16,18 +16,7 @@ GNU General Public License for more details.
 #ifndef R_LOCAL_H
 #define R_LOCAL_H
 
-#ifndef _WIN32
-#ifdef __ANDROID__
-#include <SDL.h>
-//#include <SDL_image.h>
-#else
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#endif
 
-#endif
-
-#include "r_opengl.h"
 #include "matrix.h"
 #include "ref_params.h"
 #include "com_model.h"
@@ -36,7 +25,6 @@ GNU General Public License for more details.
 #include "studio.h"
 #include "r_studioint.h"
 #include "r_studio.h"
-#include "r_grass.h"
 
 #define INVALID_HANDLE	0xFFFF
 
@@ -111,13 +99,7 @@ typedef struct gl_movie_s
 	long		xres, yres;	// size of cinematic
 } gl_movie_t;
 
-typedef struct gl_fbo_s
-{
-	GLboolean		init;
-	GLuint		framebuffer;
-	GLuint		renderbuffer;
-	int		texture;
-} gl_fbo_t;
+
 
 // plight - projected light
 typedef struct plight_s
@@ -262,7 +244,8 @@ typedef struct
 	int		lm_sample_size;
 
 	// framebuffers
-	gl_fbo_t		frame_buffers[MAX_FRAMEBUFFERS];
+
+
 	int		num_framebuffers;
 
 	int		fbo[FBO_NUM_TYPES];
@@ -438,31 +421,12 @@ typedef struct
 	qboolean		in2DMode;
 } glState_t;
 
-typedef struct
-{
-	const char	*renderer_string;		// ptrs to OpenGL32.dll, use with caution
-	const char	*version_string;
-	const char	*vendor_string;
 
-	// list of supported extensions
-	const char	*extensions_string;
-	bool		extension[R_EXTCOUNT];
-
-	int		block_size;		// lightmap blocksize
-	
-	int		max_texture_units;
-	GLint		max_2d_texture_size;
-	GLint		max_2d_rectangle_size;
-	GLint		max_3d_texture_size;
-	GLint		max_cubemap_size;
-	GLint		texRectangle;
-
-	GLfloat		max_texture_anisotropy;
-	GLfloat		max_texture_lodbias;
-} glConfig_t;
 
 extern glState_t glState;
-extern glConfig_t glConfig;
+
+
+
 
 //
 // r_opengl.cpp
@@ -478,9 +442,9 @@ bool GL_Support( int r_ext );
 void GL_LoadMatrix( const matrix4x4 source );
 void GL_LoadTexMatrix( const matrix4x4 source );
 void GL_DisableAllTexGens( void );
-void GL_FrontFace( GLenum front );
+
 void GL_SetRenderMode( int mode );
-void GL_Cull( GLenum cull );
+
 qboolean R_SetupFogProjection( void );
 void R_BeginDrawProjection( const plight_t *pl, bool decalPass = false );
 void R_EndDrawProjection( void );

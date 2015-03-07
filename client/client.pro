@@ -24,13 +24,8 @@ HEADERS += ammo.h \
            ../game_shared/pm_materials.h \
            ../game_shared/pm_movevars.h \
            ../game_shared/pm_shared.h \
-           render/r_grass.h \
-           render/r_opengl.h \
-           render/r_particle.h \
-           render/r_programs.h \
            render/r_studio.h \
            render/r_view.h \
-           render/r_weather.h \
            utils.h \
            ../game_shared/vector.h
 
@@ -58,29 +53,11 @@ SOURCES += ammo.cpp \
            parsemsg.cpp \
            ../game_shared/parser.cpp \
            ../game_shared/playermove.cpp \
-           render/r_backend.cpp \
-           render/r_beams.cpp \
-           render/r_bloom.cpp \
-           render/r_cull.cpp \
-           render/r_debug.cpp \
-           render/r_grass.cpp \
-           render/r_light.cpp \
            render/r_main.cpp \
-           render/r_mirror.cpp \
            render/r_misc.cpp \
-           render/r_monitor.cpp \
-           render/r_movie.cpp \
-           render/r_opengl.cpp \
-           render/r_particle.cpp \
-           render/r_portal.cpp \
-           render/r_shadows.cpp \
-           render/r_sprite.cpp \
            render/r_studio.cpp \
-           render/r_surf.cpp \
            render/r_tempents.cpp \
            render/r_view.cpp \
-           render/r_warp.cpp \
-           render/r_weather.cpp \
            saytext.cpp \
            scoreboard.cpp \
            status_icons.cpp \
@@ -88,4 +65,6 @@ SOURCES += ammo.cpp \
            ../game_shared/stringlib.cpp \
            text_message.cpp \
            train.cpp \
-           utils.cpp
+           utils.cpp \
+           weapons/w_events.cpp \
+           weapons/w_common.cpp

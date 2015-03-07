@@ -20,11 +20,9 @@ GNU General Public License for more details.
 #include "pm_movevars.h"
 #include "mathlib.h"
 #include "r_studio.h"
-#include "r_sprite.h"
-#include "r_particle.h"
 #include "entity_types.h"
-#include "r_weather.h"
 #include "xfeatures.h"
+
 
 #define max(a, b)  (((a) > (b)) ? (a) : (b))
 
@@ -393,23 +391,7 @@ R_ClearScene
 */
 void R_ClearScene( void )
 {
-	if( !g_fRenderInitialized )
-		return;
 
-	if( cl_viewsize != NULL && cl_viewsize->value != 120.0f )
-		CVAR_SET_FLOAT( "viewsize", 120.0f );
-
-	memset( &r_stats, 0, sizeof( r_stats ));
-
-	CL_DecayLights();
-
-	tr.num_solid_entities = tr.num_trans_entities = 0;
-	tr.num_static_entities = tr.num_mirror_entities = 0;
-	tr.num_child_entities = tr.num_beams_entities =0;
-	tr.num_mirrors_used = tr.num_portals_used = 0;
-	tr.num_portal_entities = tr.num_screens_used = 0;
-	tr.num_shadows_used = tr.local_client_added = 0;
-	tr.sky_camera = NULL;
 }
 
 /*
@@ -508,40 +490,7 @@ R_Clear
 */
 static void R_Clear( int bitMask )
 {
-	int	bits;
 
-	if( r_overview && r_overview->value )
-        glClearColor( 0.0f, 1.0f, 0.0f, 1.0f ); // green background (Valve rules)
-    else glClearColor( 0.5f, 0.5f, 0.5f, 1.0f );
-
-	bits = GL_DEPTH_BUFFER_BIT;
-
-	if( r_fastsky->value )
-		bits |= GL_COLOR_BUFFER_BIT;
-
-	if( glState.stencilEnabled )
-		bits |= GL_STENCIL_BUFFER_BIT;
-
-	bits &= bitMask;
-
-    glClear( bits );
-
-	// change ordering for overview
-	if( RI.drawOrtho )
-	{
-		gldepthmin = 1.0f;
-		gldepthmax = 0.0f;
-	}
-	else
-	{
-		if( GL_Support( R_PARANOIA_EXT ))
-			gldepthmin = 0.0001f;
-		else gldepthmin = 0.0f;
-		gldepthmax = 1.0f;
-	}
-
-    glDepthFunc( GL_LEQUAL );
-    glDepthRange( gldepthmin, gldepthmax );
 }
 
 /*
@@ -645,27 +594,7 @@ R_SetupProjectionMatrix
 */
 void R_SetupProjectionMatrix( float fov_x, float fov_y, matrix4x4 &m )
 {
-	GLdouble	xMin, xMax, yMin, yMax, zNear, zFar;
 
-	if( RI.drawOrtho )
-	{
-		const ref_overview_t *ov = GET_OVERVIEW_PARMS();
-		m.CreateOrtho( ov->xLeft, ov->xRight, ov->xTop, ov->xBottom, ov->zNear, ov->zFar );
-		return;
-	}
-
-	RI.farClip = RI.refdef.movevars->zmax * 1.5f;
-
-	zNear = 4.0f;
-	zFar = max( 256.0f, RI.farClip );
-
-	yMax = zNear * tan( fov_y * M_PI / 360.0 );
-	yMin = -yMax;
-
-	xMax = zNear * tan( fov_x * M_PI / 360.0 );
-	xMin = -xMax;
-
-	m.CreateProjection( xMax, xMin, yMax, yMin, zNear, zFar );
 }
 
 /*
@@ -695,14 +624,7 @@ R_LoadIdentity
 */
 void R_LoadIdentity( void )
 {
-	if( tr.modelviewIdentity ) return;
 
-	RI.objectMatrix.Identity();
-	RI.modelviewMatrix = RI.worldviewMatrix;
-
-    glMatrixMode( GL_MODELVIEW );
-	GL_LoadMatrix( RI.modelviewMatrix );
-	tr.modelviewIdentity = true;
 }
 
 /*
@@ -712,23 +634,7 @@ R_RotateForEntity
 */
 void R_RotateForEntity( cl_entity_t *e )
 {
-	float	scale = 1.0f;
 
-	if( e == GET_ENTITY( 0 ) || R_StaticEntity( e ))
-	{
-		R_LoadIdentity();
-		return;
-	}
-
-	if( e->model->type != mod_brush && e->curstate.scale > 0.0f )
-		scale = e->curstate.scale;
-
-	RI.objectMatrix = matrix4x4( e->origin, e->angles, scale );
-	RI.modelviewMatrix = RI.worldviewMatrix.ConcatTransforms( RI.objectMatrix );
-
-    glMatrixMode( GL_MODELVIEW );
-	GL_LoadMatrix( RI.modelviewMatrix );
-	tr.modelviewIdentity = false;
 }
 
 /*
@@ -738,23 +644,7 @@ R_TranslateForEntity
 */
 void R_TranslateForEntity( cl_entity_t *e )
 {
-	float	scale = 1.0f;
 
-	if( e == GET_ENTITY( 0 ) || R_StaticEntity( e ))
-	{
-		R_LoadIdentity();
-		return;
-	}
-
-	if( e->model->type != mod_brush && e->curstate.scale > 0.0f )
-		scale = e->curstate.scale;
-
-	RI.objectMatrix = matrix4x4( e->origin, g_vecZero, scale );
-	RI.modelviewMatrix = RI.worldviewMatrix.ConcatTransforms( RI.objectMatrix );
-
-    glMatrixMode( GL_MODELVIEW );
-	GL_LoadMatrix( RI.modelviewMatrix );
-	tr.modelviewIdentity = false;
 }
 
 /*
@@ -835,58 +725,7 @@ R_SetupGL
 */
 static void R_SetupGL( void )
 {
-	if( RI.refdef.waterlevel >= 3 )
-	{
-		float f = sin( GET_CLIENT_TIME() * 0.4f * ( M_PI * 2.7f ));
-		RI.refdef.fov_x += f;
-		RI.refdef.fov_y -= f;
-	}
 
-	R_SetupModelviewMatrix( &RI.refdef, RI.worldviewMatrix );
-	R_SetupProjectionMatrix( RI.refdef.fov_x, RI.refdef.fov_y, RI.projectionMatrix );
-
-//	if( RI.params & RP_MIRRORVIEW ) RI.projectionMatrix[0][0] = -RI.projectionMatrix[0][0];
-
-	RI.worldviewProjectionMatrix = RI.projectionMatrix.Concat( RI.worldviewMatrix );
-
-	GLfloat dest[16];
-
-	// tell engine about worldviewprojection matrix so TriWorldToScreen and TriScreenToWorld
-	// will be working properly
-	RI.worldviewProjectionMatrix.CopyToArray( dest );
-	SET_ENGINE_WORLDVIEW_MATRIX( dest );
-
-    glScissor( RI.scissor[0], RI.scissor[1], RI.scissor[2], RI.scissor[3] );
-    glViewport( RI.viewport[0], RI.viewport[1], RI.viewport[2], RI.viewport[3] );
-
-    glMatrixMode( GL_PROJECTION );
-	GL_LoadMatrix( RI.projectionMatrix );
-
-    glMatrixMode( GL_MODELVIEW );
-	GL_LoadMatrix( RI.worldviewMatrix );
-
-	if( RI.params & RP_CLIPPLANE )
-	{
-		GLdouble	clip[4];
-		mplane_t	*p = &RI.clipPlane;
-
-		clip[0] = p->normal[0];
-		clip[1] = p->normal[1];
-		clip[2] = p->normal[2];
-		clip[3] = -p->dist;
-
-        glClipPlane( GL_CLIP_PLANE0, clip );
-        glEnable( GL_CLIP_PLANE0 );
-	}
-
-	if( RI.params & RP_FLIPFRONTFACE )
-		GL_FrontFace( !glState.frontFace );
-
-	GL_Cull( GL_FRONT );
-
-    glDisable( GL_BLEND );
-    glDisable( GL_ALPHA_TEST );
-    glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
 }
 
 /*
@@ -896,11 +735,7 @@ R_EndGL
 */
 static void R_EndGL( void )
 {
-	if( RI.params & RP_FLIPFRONTFACE )
-		GL_FrontFace( !glState.frontFace );
 
-	if( RI.params & RP_CLIPPLANE )
-        glDisable( GL_CLIP_PLANE0 );
 }
 
 /*
@@ -1108,102 +943,7 @@ R_DrawEntitiesOnList
 */
 void R_DrawEntitiesOnList( void )
 {
-	int	i;
 
-	glState.drawTrans = false;
-
-	R_DrawWaterSurfaces( false );
-
-	// first draw solid entities
-	for( i = 0; i < tr.num_solid_entities; i++ )
-	{
-		if( RI.refdef.onlyClientDraw )
-			break;
-
-		RI.currententity = tr.solid_entities[i];
-		RI.currentmodel = RI.currententity->model;
-
-		// tell engine about current entity
-		SET_CURRENT_ENTITY( RI.currententity );
-	
-		assert( RI.currententity != NULL );
-		assert( RI.currententity->model != NULL );
-
-		switch( RI.currentmodel->type )
-		{
-		case mod_brush:
-			R_DrawBrushModel( RI.currententity );
-			break;
-		case mod_studio:
-			R_DrawStudioModel( RI.currententity );
-			break;
-		case mod_sprite:
-			R_DrawSpriteModel( RI.currententity );
-			break;
-		default:
-			break;
-		}
-	}
-
-	CL_DrawBeams( false );
-
-	// NOTE: some mods with custom renderer may generate glErrors
-	// so we clear it here
-    while( glGetError() != GL_NO_ERROR );
-
-    glDepthMask( GL_FALSE );
-	glState.drawTrans = true;
-
-	R_DrawWaterSurfaces( true );
-
-	// then draw translucent entities
-	for( i = 0; i < tr.num_trans_entities; i++ )
-	{
-		if( RI.refdef.onlyClientDraw )
-			break;
-
-		RI.currententity = tr.trans_entities[i];
-		RI.currentmodel = RI.currententity->model;
-
-		// tell engine about current entity
-		SET_CURRENT_ENTITY( RI.currententity );
-	
-		assert( RI.currententity != NULL );
-		assert( RI.currententity->model != NULL );
-
-		switch( RI.currentmodel->type )
-		{
-		case mod_brush:
-			R_DrawBrushModel( RI.currententity );
-			break;
-		case mod_studio:
-			R_DrawStudioModel( RI.currententity );
-			break;
-		case mod_sprite:
-			R_DrawSpriteModel( RI.currententity );
-			break;
-		default:
-			break;
-		}
-	}
-
-	g_pParticleSystems->UpdateSystems();
-
-	CL_DrawBeams( true );
-
-	R_DrawParticles();
-
-	R_DrawWeather();
-
-	// NOTE: some mods with custom renderer may generate glErrors
-	// so we clear it here
-    while( glGetError() != GL_NO_ERROR );
-
-	glState.drawTrans = false;
-    glDepthMask( GL_TRUE );
-    glDisable( GL_BLEND );	// Trinity Render issues
-
-	R_DrawViewModel();
 }
 
 /*
@@ -1215,43 +955,7 @@ RI.refdef must be set before the first call
 */
 void R_RenderScene( const ref_params_t *pparams )
 {
-	// set the worldmodel
-	worldmodel = GET_ENTITY( 0 )->model;
 
-	if( !worldmodel )
-	{
-		ALERT( at_error, "R_RenderView: NULL worldmodel\n" );
-		return;
-	}
-
-	R_RenderShadowmaps();
-
-	RI.refdef = *pparams;
-	tr.fIgnoreSkybox = false;
-
-	if( tr.sky_camera && !( RI.params & RP_SKYPORTALVIEW ) && !RI.drawOrtho )
-	{
-		R_CheckSkyPortal( tr.sky_camera );
-	}
-
-	r_stats.num_passes++;
-	r_stats.num_drawed_ents = 0;
-	tr.framecount++;
-
-	R_PushDlights();
-
-	R_SetupFrame();
-	R_SetupFrustum();
-	R_SetupGL();
-	R_Clear( ~0 );
-
-	R_MarkLeaves();
-	R_CheckFog();
-	R_DrawWorld();
-
-	R_DrawEntitiesOnList();
-
-	R_EndGL();
 }
 
 void HUD_PrintStats( void )
@@ -1313,62 +1017,7 @@ void HUD_PrintStats( void )
 
 void R_RenderDebugSurface( void )
 {
-	r_stats.debug_surface = NULL;
 
-	if( r_speeds->value != 8 )
-		return;
-
-	pmtrace_t trace;
-	r_stats.debug_surface = R_TraceLine( &trace, RI.vieworg, RI.vieworg + RI.vforward * 4096, 0 );
-	if( !r_stats.debug_surface ) return;
-
-	cl_entity_t *ent = GET_ENTITY( trace.ent );
-
-	if( !ent || !ent->model || ent->model->type != mod_brush )
-		return;
-
-	mextrasurf_t *info = SURF_INFO( r_stats.debug_surface, ent->model );
-	if( !info || !info->mesh ) return; 
-
-	msurfmesh_t *mesh = info->mesh;
-
-	if( ent->curstate.angles != g_vecZero )
-		R_RotateForEntity( ent );
-	else R_TranslateForEntity( ent );
-
-    glDisable( GL_TEXTURE_2D );
-    glDisable( GL_DEPTH_TEST );
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-    glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );	// red bboxes for studiomodels
-
-	// turbulent surfaces not a valid polygons. just triangles
-	if( r_stats.debug_surface->flags & SURF_DRAWTURB )
-	{
-        glBegin( GL_TRIANGLES );
-
-		for( int i = 0; i < mesh->numElems; i += 3 )
-		{
-            glVertex3fv( mesh->verts[mesh->elems[i+0]].vertex );
-            glVertex3fv( mesh->verts[mesh->elems[i+1]].vertex );
-            glVertex3fv( mesh->verts[mesh->elems[i+2]].vertex );
-                    }
-
-        glEnd();
-	}
-	else
-	{
-        glBegin( GL_POLYGON );
-
-		for( int i = 0; i < mesh->numVerts; i++ )
-            glVertex3fv( mesh->verts[i].vertex );
-
-        glEnd();
-	}
-
-    glEnable( GL_TEXTURE_2D );
-    glEnable( GL_DEPTH_TEST );
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-	R_LoadIdentity ();
 }
 
 /*
@@ -1386,92 +1035,8 @@ int HUD_RenderFrame( const ref_params_t *pparams, qboolean drawWorld )
 {
 	tr.fCustomRendering = false;
 
-	if( !g_fRenderInitialized )
-		return 0;
+    return 0;
 
-	r_speeds_msg[0] = '\0';
-
-	// always the copy params in case we need have valid movevars
-	RI.refdef = *pparams;
-	tr.cached_refdef = pparams;
-
-	// it's playersetup overview, ignore it	
-	if( !drawWorld ) return 0;
-
-	// we are in dev_overview mode, ignore it
-	if( r_overview && r_overview->value )
-	{
-		RI.drawOrtho = true;
-		tr.fResetVis = true;
-	}
-	else
-	{
-		RI.drawOrtho = false;
-	}
-
-	// use engine renderer
-	if( gl_renderer->value == 0 )
-	{
-		tr.fResetVis = true;
-		return 0;
-	}
-
-	tr.fCustomRendering = true;
-	r_lastRefdef = *pparams;
-	RI.params = RP_NONE;
-	RI.farClip = 0;
-	RI.clipFlags = 15;
-	RI.drawWorld = true;
-	RI.thirdPerson = gHUD.m_iCameraMode;
-	RI.pvsorigin = pparams->vieworg;
-	memset( RI.frustum, 0, sizeof( RI.frustum ));
-
-	// setup scissor
-	RI.scissor[0] = pparams->viewport[0];
-	RI.scissor[1] = pparams->viewport[1];
-	RI.scissor[2] = pparams->viewport[2];
-	RI.scissor[3] = pparams->viewport[3];
-
-	// setup viewport
-	RI.viewport[0] = pparams->viewport[0];
-	RI.viewport[1] = pparams->viewport[1];
-	RI.viewport[2] = pparams->viewport[2];
-	RI.viewport[3] = pparams->viewport[3];
-
-    if( r_finish->value ) glFinish();
-
-	if( r_allow_screens->value )
-	{
-		// render screens
-		if( R_FindScreens( pparams ))
-			R_DrawScreens ();
-	}
-
-	if( r_allow_mirrors->value )
-	{
-		// render mirrors
-		if( R_FindMirrors( pparams ))
-			R_DrawMirrors ();
-	}
-
-	if( r_allow_portals->value )
-	{
-		// render portals
-		if( R_FindPortals( pparams ))
-			R_DrawPortals ();
-	}
-
-	// draw main view
-	R_RenderScene( pparams );
-	tr.realframecount++;
-
-	R_RenderDebugSurface ();
-
-	R_BloomBlend( pparams );
-
-	HUD_PrintStats ();
-
-	return 1;
 }
 
 /*
@@ -1481,54 +1046,11 @@ HUD_DrawCubemapView
 */
 BOOL HUD_DrawCubemapView( const float *origin, const float *angles, int size )
 {
-	ref_params_t *fd;
-
-	if( !tr.fCustomRendering )
 		return 0;
-
-	fd = &RI.refdef;
-	*fd = r_lastRefdef;
-	fd->time = 0;
-	fd->viewport[0] = 0;
-	fd->viewport[1] = 0;
-	fd->viewport[2] = size;
-	fd->viewport[3] = size;
-	fd->fov_x = 90;
-	fd->fov_y = 90;
-	fd->vieworg = origin;
-	fd->viewangles = angles;
-	RI.pvsorigin = fd->vieworg;
-	RI.params |= RP_ENVVIEW;
-		
-	// setup scissor
-	RI.scissor[0] = fd->viewport[0];
-	RI.scissor[1] = fd->viewport[1];
-	RI.scissor[2] = fd->viewport[2];
-	RI.scissor[3] = fd->viewport[3];
-
-	// setup viewport
-	RI.viewport[0] = fd->viewport[0];
-	RI.viewport[1] = fd->viewport[1];
-	RI.viewport[2] = fd->viewport[2];
-	RI.viewport[3] = fd->viewport[3];
-
-	R_RenderScene( fd );
-
-	r_viewleaf = r_viewleaf2 = NULL;		// force markleafs next frame
-	RI.params &= ~RP_ENVVIEW;
-
-	return 1;
 }
 
 BOOL HUD_SpeedsMessage( char *out, size_t size )
 {
-	if( !gl_renderer || !gl_renderer->value )
-		return false; // let the engine use built-in counters
-
-	if( r_speeds->value <= 0 ) return false;
-	if( !out || !size ) return false;
-
-	Q_strncpy( out, r_speeds_msg, size );
 
 	return true;
 }
@@ -1540,8 +1062,8 @@ static render_interface_t gRenderInterface =
 {
 	CL_RENDER_INTERFACE_VERSION,
 	HUD_RenderFrame,
-	HUD_BuildLightmaps,
-	HUD_SetOrthoBounds,
+	NULL,
+	NULL,
 	R_StudioDecalShoot,
 	R_CreateStudioDecalList,
 	R_ClearStudioDecals,

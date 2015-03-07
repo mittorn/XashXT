@@ -15,6 +15,7 @@
 #include <mathlib.h>
 
 #define min(a, b)  (((a) < (b)) ? (a) : (b))
+#define max(a, b) (a) > (b) ? (a) : (b)
 
 // thirdperson camera
 void CAM_Think( void ) { R_ClearScene(); }
@@ -89,6 +90,8 @@ cvar_t	v_iyaw_level  	= { "v_iyaw_level", "0.3", 0, 0.3 };
 cvar_t	v_iroll_level 	= { "v_iroll_level", "0.1", 0, 0.1 };
 cvar_t	v_ipitch_level	= { "v_ipitch_level", "0.3", 0, 0.3 };
 
+vec3_t ev_punchangle;
+
 //============================================================================== 
 //				VIEW RENDERING 
 //============================================================================== 
@@ -112,6 +115,32 @@ void V_ThirdPerson( void )
 void V_FirstPerson( void )
 {
 	gHUD.m_iCameraMode = 0;
+}
+
+/*
+=============
+V_PunchAxis
+
+Client side punch effect
+=============
+*/
+
+void V_DropPunchAngle( float frametime,  Vector &punchangle )
+{
+    float	len;
+
+    len = punchangle.Length();
+    punchangle = punchangle.Normalize();
+
+    len -= (10.0 + len * 0.5) * frametime;
+    len = max( len, 0.0 );
+    punchangle *= len;
+}
+
+
+void V_PunchAxis( int axis, float punch )
+{
+    ev_punchangle[ axis ] = punch;
 }
 
 //==========================
@@ -360,7 +389,7 @@ void V_CalcGunAngle( struct ref_params_s *pparams )
 	viewent->angles[YAW] -= v_idlescale * sin( pparams->time*v_iyaw_cycle.value ) * v_iyaw_level.value;
 
 	viewent->latched.prevangles = viewent->angles;
-	viewent->curstate.angles = viewent->angles;
+    viewent->curstate.angles = viewent->angles;
 }
 
 //==========================
@@ -956,6 +985,9 @@ void V_CalcFirstPersonRefdef( struct ref_params_s *pparams )
 	V_CalcViewModelLag( pparams, view->origin, view->angles, lastAngles );
 		
 	pparams->viewangles += pparams->punchangle;
+    pparams->viewangles += ev_punchangle;
+
+    V_DropPunchAngle(pparams->frametime,ev_punchangle);
 
 	static float lasttime, oldz = 0;
 
@@ -992,31 +1024,7 @@ void V_CalcFirstPersonRefdef( struct ref_params_s *pparams )
 //==========================
 void V_CalcGlobalFog( struct ref_params_s *pparams )
 {
-	if( !g_fRenderInitialized || RI.fogEnabled )
-		return;
 
-	bool bOn = pparams->waterlevel < 2 && gHUD.m_fStartDist > 0 && gHUD.m_fEndDist > 0;
-
-#if 0	// enable for fog testing
-	gHUD.m_vecFogColor[0] = 107;
-	gHUD.m_vecFogColor[1] = 112;
-	gHUD.m_vecFogColor[2] = 125;
-	gHUD.m_fStartDist = 0;
-	gHUD.m_fEndDist = 4096;
-	bOn = true;
-#endif
-	if( bOn )
-	{
-		RI.fogCustom = true;
-
-		// copy fog params
-		RI.fogColor[0] = TEXTURE_TO_TEXGAMMA( gHUD.m_vecFogColor.x ) / 255.0f;
-		RI.fogColor[1] = TEXTURE_TO_TEXGAMMA( gHUD.m_vecFogColor.y ) / 255.0f;
-		RI.fogColor[2] = TEXTURE_TO_TEXGAMMA( gHUD.m_vecFogColor.z ) / 255.0f;
-		RI.fogStart = gHUD.m_fStartDist;
-		RI.fogEnd = gHUD.m_fEndDist;
-		RI.fogDensity = 0.0f;
-	}
 }
 
 //==========================

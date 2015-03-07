@@ -38,6 +38,8 @@ cl_enginefunc_t gEngfuncs;
 render_api_t gRenderfuncs;
 CHud gHUD;
 
+void Game_HookEvents( void );
+
 /*
 ==========================
     Initialize
@@ -192,6 +194,8 @@ int Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 
 	g_iXashEngineBuildNumber = (int)CVAR_GET_FLOAT( "build" ); // 0 for old builds or GoldSrc
 
+    Game_HookEvents();
+
 	return 1;
 }
 
@@ -207,9 +211,6 @@ so the HUD can reinitialize itself.
 int HUD_VidInit( void )
 {
 	gHUD.VidInit();
-
-	if( g_fRenderInitialized )
-		R_VidInit();
 
 	return 1;
 }
@@ -228,16 +229,11 @@ void HUD_Init( void )
 	InitInput();
 	gHUD.Init();
 
-	if( g_fRenderInitialized )
-		R_Init();
 }
 
 void HUD_Shutdown( void )
 {
 	ShutdownInput();
-
-	if( g_fRenderInitialized )
-		R_Shutdown();
 }
 
 /*
@@ -282,43 +278,7 @@ void HUD_Reset( void )
 	gHUD.VidInit();
 }
 
-static int *VGUI_GetRect( void )
-{
-	static int extent[4];
-#ifdef _WIN32
-    RECT wrect;
 
-	if( GetWindowRect( GetActiveWindow(), &wrect ))
-          {
-		if( !wrect.left )
-		{
-			// fullscreen
-			extent[0] = wrect.left;
-			extent[1] = wrect.top;
-			extent[2] = wrect.right;
-			extent[3] = wrect.bottom;
-		}
-		else
-		{
-			// window
-			extent[0] = wrect.left + 4;
-			extent[1] = wrect.top + 30;
-			extent[2] = wrect.right - 4;
-			extent[3] = wrect.bottom - 4;
-		}
-	}
-#else
-            extent[0] = 0;
-            extent[1] = 0;
-
-            extent[2] = 800;
-            extent[3] = 600;
-
-            //nicknekit: not needed without vgui?
-
-#endif
-	return extent;	
-}
 
 /*
 ==========================
@@ -329,8 +289,6 @@ Called by engine every frame that client .dll is loaded
 */
 void HUD_Frame( double time )
 {
-	// run anti (_-=ZhekA=-_) system for Xash3D engine
-    //gEngfuncs.VGui_ViewportPaintBackground( VGUI_GetRect( ));  //nicknekit: not needed without vgui
 
 }
 

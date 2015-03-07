@@ -20,7 +20,6 @@ GNU General Public License for more details.
 #include "r_studioint.h"
 #include "pm_movevars.h"
 #include "r_studio.h"
-#include "r_sprite.h"
 #include "event_api.h"
 #include <mathlib.h>
 #include "pm_defs.h"
@@ -48,15 +47,6 @@ int HUD_GetStudioModelInterface( int version, struct r_studio_interface_s **ppin
 	// Copy in engine helper functions
 	memcpy( &IEngineStudio, pstudio, sizeof( IEngineStudio ));
 
-	if( g_fRenderInitialized )
-	{
-		// Initialize local variables, etc.
-		g_StudioRenderer.Init();
-
-		g_SpriteRenderer.Init();
-
-		R_InitViewBeams ();
-	}
 
 	// Success
 	return 1;
@@ -2072,216 +2062,12 @@ NOTE: decalTexture is gl texture index
 */
 void CStudioModelRenderer::StudioDecalShoot( const Vector &vecStart, const Vector &vecEnd, int decalTexture, cl_entity_t *ent, int flags, modelstate_t *state )
 {
-	if( !g_fRenderInitialized )
-		return;
 
-	if( !ent || !IEngineStudio.Mod_Extradata( ent->model ))
-		return;
-
-	if( ent == gEngfuncs.GetViewModel( ))
-		return;	// no decals for viewmodel
-
-	SET_CURRENT_ENTITY( ent );
-	m_fDoInterp = true;
-
-	if( UTIL_IsPlayer( ent->curstate.number ))
-		m_pRenderModel = IEngineStudio.SetupPlayerModel( ent->curstate.number - 1 );
-	else
-		m_pRenderModel = ent->model;
-
-	if( !m_pRenderModel )
-		return;
-
-	m_pCurrentEntity = IEngineStudio.GetCurrentEntity();
-	m_pStudioHeader = (studiohdr_t *)IEngineStudio.Mod_Extradata( m_pRenderModel );
-
-	if( m_pStudioHeader->numbodyparts == 0 )
-		return;
-
-	IEngineStudio.GetTimes( &m_nFrameCount, &m_clTime, &m_clOldTime );
-	IEngineStudio.StudioSetHeader( m_pStudioHeader );
-	IEngineStudio.SetRenderModel( m_pRenderModel );
-
-	entity_state_t savestate = m_pCurrentEntity->curstate;
-
-	if( m_pCvarHiModels->value && m_pRenderModel != m_pCurrentEntity->model )
-	{
-		// show highest resolution multiplayer model
-		m_pCurrentEntity->curstate.body = 255;
-	}
-
-	m_fDoInterp = false;
-
-	m_pCurrentEntity->curstate.sequence = state->sequence;
-	m_pCurrentEntity->curstate.frame = (float)state->frame * (1.0f / 8.0f);
-	m_pCurrentEntity->curstate.blending[0] = state->blending[0];
-	m_pCurrentEntity->curstate.blending[1] = state->blending[1];
-	m_pCurrentEntity->curstate.controller[0] = state->controller[0];
-	m_pCurrentEntity->curstate.controller[1] = state->controller[1];
-	m_pCurrentEntity->curstate.controller[2] = state->controller[2];
-	m_pCurrentEntity->curstate.controller[3] = state->controller[3];
-
-	if( flags & FDECAL_LOCAL_SPACE )
-	{
-		// make sure what model is in local space
-		m_pCurrentEntity->origin = g_vecZero;
-		m_pCurrentEntity->angles = g_vecZero;
-	}
-
-	// setup bones
-	StudioSetUpTransform();
-	StudioSetupBones( );
-
-	// bones are set, so we can restore original state
-	m_pCurrentEntity->curstate = savestate;
-
-	if( !ComputePoseToDecal( vecStart, vecEnd ))
-		return;
-
-	// create instance for store decals personal for each entity
-	if( ent->modelhandle == INVALID_HANDLE )
-		ent->modelhandle = CreateInstance( ent );
-
-	if( ent->modelhandle == INVALID_HANDLE )
-		return; // out of memory?
-
-	float w = (float)RENDER_GET_PARM( PARM_TEX_SRC_WIDTH, decalTexture ) * 0.5f;
-	float h = (float)RENDER_GET_PARM( PARM_TEX_SRC_HEIGHT, decalTexture ) * 0.5f;
- 	float radius = ((w > h) ? w : h) * 0.6f; // scale decals so the look same as on world geometry
-	flags |= FDECAL_LOCAL_SPACE; // now it's in local space
- 
-	ModelInstance_t& inst = m_ModelInstances[ent->modelhandle];
-
-	if( !IsModelInstanceValid( ent->modelhandle ))
-	{
-		DestroyDecalList( inst.m_DecalHandle );
-		inst.m_DecalHandle = INVALID_HANDLE;
-	}
-
-	if( inst.m_DecalHandle == INVALID_HANDLE )
-	{
-		// allocate new decallist
-		inst.m_DecalHandle = CreateDecalList();
-	}
-
-	// This sucker is state needed only when building decals
-	DecalBuildInfo_t buildInfo;
-	buildInfo.m_Radius = radius;
-	buildInfo.m_pStudioHeader = m_pStudioHeader;
-	buildInfo.m_UseClipVert = (flags & FDECAL_CLIPTEST) ? true : false;
-
-	DecalModelList_t& list = m_DecalList[inst.m_DecalHandle];
-	int materialIdx = GetDecalMaterial( list, decalTexture );
-	buildInfo.m_pDecalMaterial = &m_DecalMaterial[materialIdx];
-
-	// Check to see if we should retire the decal
-	while( ShouldRetireDecal( buildInfo.m_pDecalMaterial, list.m_DecalHistory ))
-	{
-		RetireDecal( list.m_DecalHistory );
-	}
-
-	buildInfo.m_FirstVertex = buildInfo.m_pDecalMaterial->m_Vertices.InvalidIndex();
-	buildInfo.m_VertexCount = 0;
-
-	int prevIndexCount = buildInfo.m_pDecalMaterial->m_Indices.Count();
-
-	// Step over all body parts + add decals to em all!
-	for( int k = 0; k < m_pStudioHeader->numbodyparts; k++ ) 
-	{
-		// Grab the model for this body part
-		int model = StudioSetupModel( k, (void **)&m_pBodyPart, (void **)&m_pSubModel );
-		buildInfo.m_Body = k;
-		buildInfo.m_Model = model;
-
-		AddDecalToModel( buildInfo );
-	}
-
-	// Add this to the list of decals in this material
-	if( buildInfo.m_VertexCount )
-	{
-		int decalIndexCount = buildInfo.m_pDecalMaterial->m_Indices.Count() - prevIndexCount;
-		assert( decalIndexCount > 0 );
-
-		int decalIndex = AddDecalToMaterialList( buildInfo.m_pDecalMaterial );
-		Decal_t& decal = buildInfo.m_pDecalMaterial->m_Decals[decalIndex];
-		decal.m_VertexCount = buildInfo.m_VertexCount;
-		decal.m_IndexCount = decalIndexCount;
-
-		decal.state = *state;
-		decal.depth = inst.m_DecalCount++;
-		decal.vecLocalStart = m_protationmatrix.VectorITransform( vecStart );
-		decal.vecLocalEnd = m_protationmatrix.VectorITransform( vecEnd );
-		decal.flags = (byte)flags;
-		
-		// Add this decal to the history...
-		int h = list.m_DecalHistory.AddToTail();
-		list.m_DecalHistory[h].m_Material = materialIdx;
-		list.m_DecalHistory[h].m_Decal = decalIndex;
-	}
 }
 
 int CStudioModelRenderer::StudioDecalList( decallist_t *pBaseList, int count, qboolean changelevel )
 {
-	if( !g_fRenderInitialized )
 		return 0;
-
-	int maxStudioDecals = MAX_STUDIO_DECALS + (MAX_STUDIO_DECALS - count);
-	decallist_t *pList = pBaseList + count;	// shift list to first free slot
-	int total = 0;
-
-	cl_entity_t *pEntity = NULL;
-	char decalname[64];
-
-	for( int i = 0; i < m_ModelInstances.Count(); i++ )
-          {
-		word decalHandle = m_ModelInstances[i].m_DecalHandle;
-
-		if( decalHandle == INVALID_HANDLE )
-			continue;	// decal list is removed
-
-		DecalModelList_t const& list = m_DecalList[decalHandle];
-		word decalMaterial = m_DecalList[decalHandle].m_FirstMaterial;
-
-		// setup the decal entity
-		pEntity = m_ModelInstances[i].m_pEntity;
-
-		for( word mat = list.m_FirstMaterial; mat != m_DecalMaterial.InvalidIndex(); mat = m_DecalMaterial.Next( mat ))
-		{
-			DecalMaterial_t& decalMaterial = m_DecalMaterial[mat];
-
-			// setup the decal texture
-			Q_strncpy( decalname, GET_TEXTURE_NAME( decalMaterial.decalTexture ), sizeof( decalname ));
-			word decal = decalMaterial.m_Decals.Head();
-
-			while( decal != decalMaterial.m_Decals.InvalidIndex( ))
-			{
-				Decal_t *pdecal = &decalMaterial.m_Decals[decal];
-
-				if(!( pdecal->flags & FDECAL_DONTSAVE ))	
-				{
-					pList[total].depth = pdecal->depth;
-					pList[total].flags = pdecal->flags|FDECAL_STUDIO;
-					pList[total].entityIndex = pEntity->index;
-					pList[total].studio_state = pdecal->state;
-					pList[total].position = pdecal->vecLocalEnd;
-					pList[total].impactPlaneNormal = pdecal->vecLocalStart;
-					COM_FileBase( decalname, pList[total].name );
-					total++;
-				}
-
-				// check for list overflow
-				if( total >= maxStudioDecals )
-				{
-					ALERT( at_error, "StudioDecalList: too many studio decals on save\restore\n" );
-					goto end_serialize;
-				}
-				decal = decalMaterial.m_Decals.Next( decal ); 
-			}
-		}
-	}
-end_serialize:
-
-	return total;
 }
 
 //-----------------------------------------------------------------------------
@@ -2289,19 +2075,7 @@ end_serialize:
 //-----------------------------------------------------------------------------
 void CStudioModelRenderer::RemoveAllDecals( int entityIndex )
 {
-	if( !g_fRenderInitialized ) return;
 
-	cl_entity_t *ent = gEngfuncs.GetEntityByIndex( entityIndex );
-
-	if( !ent || ent->modelhandle == INVALID_HANDLE )
-		return;
-
-	ModelInstance_t& inst = m_ModelInstances[ent->modelhandle];
-	if( !IsModelInstanceValid( ent->modelhandle )) return;
-	if( inst.m_DecalHandle == INVALID_HANDLE ) return;
-
-	DestroyDecalList( inst.m_DecalHandle );
-	inst.m_DecalHandle = INVALID_HANDLE;
 }
 
 void CStudioModelRenderer::ComputeDecalTransform( DecalMaterial_t& decalMaterial )
@@ -2337,46 +2111,7 @@ void CStudioModelRenderer::ComputeDecalTransform( DecalMaterial_t& decalMaterial
 //-----------------------------------------------------------------------------
 void CStudioModelRenderer::DrawDecalMaterial( DecalMaterial_t& decalMaterial, studiohdr_t *pStudioHdr )
 {
-	// It's possible for the index count to become zero due to decal retirement
-	int indexCount = decalMaterial.m_Indices.Count();
-	if( indexCount == 0 ) return;
 
-	int vertexCount = decalMaterial.m_Vertices.Count();
-
-	ComputeDecalTransform( decalMaterial );
-
-	// Set the indices
-	// This is a little tricky. Because we can retire decals, the indices
-	// for each decal start at 0. We output all the vertices in order of
-	// each decal, and then fix up the indices based on how many vertices
-	// we wrote out for the decals
-	word decal = decalMaterial.m_Decals.Head();
-	int indicesRemaining = decalMaterial.m_Decals[decal].m_IndexCount;
-	int vertexOffset = 0;
-	for( int i = 0; i < indexCount; i++ )
-	{
-		m_arrayelems[m_nNumArrayElems] = decalMaterial.m_Indices[i] + vertexOffset; 
-		m_nNumArrayElems++;
-
-		if( --indicesRemaining <= 0 )
-		{
-			vertexOffset += decalMaterial.m_Decals[decal].m_VertexCount;
-			decal = decalMaterial.m_Decals.Next( decal ); 
-
-			if( decal != decalMaterial.m_Decals.InvalidIndex( ))
-			{
-				indicesRemaining = decalMaterial.m_Decals[decal].m_IndexCount;
-			}
-#ifdef _DEBUG
-			else
-			{
-				assert( i + 1 == indexCount );
-			}
-#endif
-		}
-	}
-
-    glDrawElements( GL_TRIANGLES, m_nNumArrayElems, GL_UNSIGNED_INT, m_arrayelems );
 }
 
 //-----------------------------------------------------------------------------
@@ -2384,118 +2119,7 @@ void CStudioModelRenderer::DrawDecalMaterial( DecalMaterial_t& decalMaterial, st
 //-----------------------------------------------------------------------------
 void CStudioModelRenderer :: DrawDecal( word handle, studiohdr_t *pStudioHdr )
 {
-	if( handle == INVALID_HANDLE )
-		return;
 
-	// All decal vertex data is are stored in pose space
-	// So as long as the pose-to-world transforms are set, we're all ready!
-
-	// Get the decal list for this lod
-	DecalModelList_t const& list = m_DecalList[handle];
-	m_pStudioHeader = pStudioHdr;
-
-	if( m_pCurrentEntity->curstate.rendermode == kRenderNormal || m_pCurrentEntity->curstate.rendermode == kRenderTransAlpha )
-	{
-        glDepthMask( GL_FALSE );
-        glEnable( GL_BLEND );
-	}
-
-    glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-
-    glEnable( GL_POLYGON_OFFSET_FILL );
-    glEnableClientState( GL_VERTEX_ARRAY );
-    glVertexPointer( 3, GL_FLOAT, 12, m_arrayverts );
-
-    glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-    glTexCoordPointer( 2, GL_FLOAT, 8, m_arraycoord );
-
-    glEnableClientState( GL_COLOR_ARRAY );
-    glColorPointer( 4, GL_UNSIGNED_BYTE, 0, m_arraycolor );
-
-	int lastTexture = -1;
-
-	// Draw each set of decals using a particular material
-	for( word mat = list.m_FirstMaterial; mat != m_DecalMaterial.InvalidIndex(); mat = m_DecalMaterial.Next( mat ))
-	{
-		DecalMaterial_t& decalMaterial = m_DecalMaterial[mat];
-
-		if( lastTexture != decalMaterial.decalTexture )
-		{
-			// bind the decal texture
-			GL_Bind( GL_TEXTURE0, decalMaterial.decalTexture );
-            glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
-			R_SetupOverbright( true );
-		}
-
-		DrawDecalMaterial( decalMaterial, pStudioHdr );
-
-		if( lastTexture != decalMaterial.decalTexture )
-		{
-			R_SetupOverbright( false );
-			lastTexture = decalMaterial.decalTexture;
-		}
-	}
-
-    glDisableClientState( GL_COLOR_ARRAY );
-    glDisableClientState( GL_TEXTURE_COORD_ARRAY );
-	Vector origin = m_protationmatrix.GetOrigin();
-
-	if( m_fHasProjectionLighting )
-	{
-		for( int i = 0; i < MAX_PLIGHTS; i++ )
-		{
-			plight_t *pl = &cl_plights[i];
-
-			if( pl->die < GET_CLIENT_TIME() || !pl->radius )
-				continue;
-
-			float dist = (pl->origin - origin).Length();
-
-			if( !dist || dist > ( pl->radius + studio_radius ))
-				continue;
-
-			if( R_CullSphereExt( pl->frustum, origin, studio_radius, pl->clipflags ))
-				continue;
-
-			lastTexture = -1;
-
-			R_BeginDrawProjection( pl, true );
-
-			for( word mat = list.m_FirstMaterial; mat != m_DecalMaterial.InvalidIndex(); mat = m_DecalMaterial.Next( mat ))
-			{
-				DecalMaterial_t& decalMaterial = m_DecalMaterial[mat];
-
-				if( lastTexture != decalMaterial.decalTexture )
-				{
-					// bind the decal texture
-					GL_Bind( GL_TEXTURE3, decalMaterial.decalTexture );
-					lastTexture = decalMaterial.decalTexture;
-				}
-
-                glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-                glTexCoordPointer( 2, GL_FLOAT, 8, m_arraycoord );
-				DrawDecalMaterial( decalMaterial, pStudioHdr );
-                glDisableClientState( GL_TEXTURE_COORD_ARRAY );
-			}
-
-			R_EndDrawProjection();
-		}
-
-        glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-	}
-
-	if( m_pCurrentEntity->curstate.rendermode == kRenderNormal || m_pCurrentEntity->curstate.rendermode == kRenderTransAlpha )
-	{
-        glDepthMask( GL_TRUE );
-        glDisable( GL_BLEND );
-	}
-
-    glDisableClientState( GL_VERTEX_ARRAY );
-    glDisable( GL_POLYGON_OFFSET_FILL );
-
-	// restore blendfunc here
-	if( m_pCurrentEntity->curstate.rendermode == kRenderTransAdd || m_pCurrentEntity->curstate.rendermode == kRenderGlow )
-        glBlendFunc( GL_SRC_ALPHA, GL_ONE );
 }
 
 /*
@@ -2644,8 +2268,6 @@ int CStudioModelRenderer::StudioCheckBBox( void )
 	// NOTE: extract real drawing origin from rotation matrix
 	m_protationmatrix.GetOrigin( modelpos );
 
-	if( R_CullModel( m_pCurrentEntity, modelpos, studio_mins, studio_maxs, studio_radius ))
-		return false; // culled
 
 	// to prevent drawing sky entities through normal view
 	if( tr.sky_camera && tr.fIgnoreSkybox )
@@ -2716,7 +2338,7 @@ void CStudioModelRenderer::StudioDynamicLight( cl_entity_t *ent, alight_t *light
 
 	// setup ambient lighting
 	bool invLight = (ent->curstate.effects & EF_INVLIGHT) ? true : false;
-	R_LightForPoint( origin, &ambient, invLight, true, 0.0f ); // ignore dlights
+
 
 	m_pLightInfo->lightColor[0] = ambient.r * (1.0f / 255.0f);
 	m_pLightInfo->lightColor[1] = ambient.g * (1.0f / 255.0f);
@@ -2913,35 +2535,6 @@ void CStudioModelRenderer::StudioClientEvents( void )
 
 bool CStudioModelRenderer :: StudioLightingIntersect( void )
 {
-	if( !worldmodel->lightdata || r_fullbright->value )
-		return false;
-
-	// no custom lighting for transparent entities
-	if( RI.params & RP_SHADOWVIEW )
-		return false;
-
-	if( m_pCurrentEntity->curstate.rendermode != kRenderNormal && m_pCurrentEntity->curstate.rendermode != kRenderTransAlpha )
-		return false;
-
-	Vector origin = m_protationmatrix.GetOrigin();
-
-	for( int i = 0; i < MAX_PLIGHTS; i++ )
-	{
-		plight_t *l = &cl_plights[i];
-
-		if( l->die < GET_CLIENT_TIME() || !l->radius )
-			continue;
-
-		float dist = (l->origin - origin).Length();
-
-		if( !dist || dist > ( l->radius + studio_radius ))
-			continue;
-
-		if( R_CullSphereExt( l->frustum, origin, studio_radius, l->clipflags ))
-			continue;
-
-		return true;
-	}
 
 	return false;
 }
@@ -2954,41 +2547,7 @@ StudioSetRenderMode
 */
 void CStudioModelRenderer :: StudioSetRenderMode( const int rendermode )
 {
-    glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
-
-	switch( rendermode )
-	{
-	case kRenderNormal:
-        glDisable( GL_BLEND );
-        glDepthMask( GL_TRUE );
-        glDisable( GL_ALPHA_TEST );
-		break;
-	case kRenderTransColor:
-	case kRenderTransTexture:
-        glEnable( GL_BLEND );
-        glDepthMask( GL_TRUE );
-        glDisable( GL_ALPHA_TEST );
-        glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-		break;
-	case kRenderTransAlpha:
-        glDisable( GL_BLEND );
-        glDepthMask( GL_TRUE );
-        glEnable( GL_ALPHA_TEST );
-        glAlphaFunc( GL_GREATER, 0.0f );
-		break;
-	case kRenderGlow:
-	case kRenderTransAdd:
-        glEnable( GL_BLEND );
-        glDisable( GL_ALPHA_TEST );
-        glBlendFunc( GL_SRC_ALPHA, GL_ONE );
-		if( m_nForceFaceFlags & STUDIO_NF_CHROME )
-            glDepthMask( GL_TRUE );
-        else glDepthMask( GL_FALSE );
-		break;
-	default:
-		ALERT( at_error, "StudioRenderMode: bad rendermode %i\n", rendermode );
-		break;
-	}
+  
 }
 
 /*
@@ -2999,188 +2558,7 @@ StudioDrawMesh
 */
 void CStudioModelRenderer::StudioDrawMesh( short *ptricmds, float s, float t, int nDrawFlags, int nFaceFlags )
 {
-	byte	alpha = 255;
-	byte	scale = 255;
-	int	i;
 
-	if( FBitSet( nDrawFlags, MESH_GLOWSHELL ))
-		scale = 1.0f + m_pCurrentEntity->curstate.renderamt * (1.0f / 255.0f);
-
-	if( FBitSet( nDrawFlags, MESH_ALPHA_ENTITY ))
-		alpha = m_pCurrentEntity->curstate.renderamt;
-	else if( FBitSet( nFaceFlags, STUDIO_NF_TRANSPARENT ))
-		alpha = 1; // to avoid black lines on transparent tex
-
-	if( FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-		m_nNumArrayVerts = m_nNumArrayElems = 0;
-
-	while( i = *( ptricmds++ ))
-	{
-		int	vertexState = 0;
-		bool	tri_strip;
-
-		if( i < 0 )
-		{
-			if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                glBegin( GL_TRIANGLE_FAN );
-			tri_strip = false;
-			i = -i;
-		}
-		else
-		{
-			if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                glBegin( GL_TRIANGLE_STRIP );
-			tri_strip = true;
-		}
-
-		// count all the draws not only in main pass
-		if( RP_NORMALPASS( )) r_stats.c_studio_polys += (i - 2);
-
-		for( ; i > 0; i--, ptricmds += 4 )
-		{
-			// build indices for glDrawArrays
-			if( FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                              {
-				if( vertexState++ < 3 )
-				{
-					m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts;
-				}
-				else if( tri_strip )
-				{
-					// flip triangles between clockwise and counter clockwise
-					if( vertexState & 1 )
-					{
-						// draw triangle [n-2 n-1 n]
-						m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts - 2;
-						m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts - 1;
-						m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts;
-					}
-					else
-					{
-						// draw triangle [n-1 n-2 n]
-						m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts - 1;
-						m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts - 2;
-						m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts;
-					}
-				}
-				else
-				{
-					// draw triangle fan [0 n-1 n]
-					m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts - ( vertexState - 1 );
-					m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts - 1;
-					m_arrayelems[m_nNumArrayElems++] = m_nNumArrayVerts;
-				}
-			}
-
-			if( !FBitSet( nDrawFlags, MESH_NOTEXCOORDS ))
-                              {
-				Vector2D	uv;
-
-				if( FBitSet( nDrawFlags, MESH_CHROME ))
-				{
-					uv.x = m_chrome[ptricmds[1]][0] * s;
-					uv.y = m_chrome[ptricmds[1]][1] * t;
-				}
-				else
-				{
-					uv.x = ptricmds[2] * s;
-					uv.y = ptricmds[3] * t;
-				}
-
-				if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                    glTexCoord2f( uv.x, uv.y );
-				else m_arraycoord[m_nNumArrayVerts] = uv;
-			}
-
-			if( !FBitSet( nDrawFlags, MESH_NONORMALS ))
-                              {
-				Vector nv = m_norms[ptricmds[1]];
-
-				if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                    glNormal3fv( nv );
-				else m_arraynorms[m_nNumArrayVerts] = nv;
-                              }
-
-			if( !FBitSet( nDrawFlags, MESH_NOCOLORS ))
-			{
-				byte cl[4];
-
-				if( FBitSet( nDrawFlags, MESH_COLOR_LIGHTING ))
-				{
-					cl[0] = m_lightvalues[ptricmds[1]].x * 255;
-					cl[1] = m_lightvalues[ptricmds[1]].y * 255;
-					cl[2] = m_lightvalues[ptricmds[1]].z * 255;
-				}
-				else if( FBitSet( nDrawFlags, MESH_COLOR_ENTITY ))
-				{
-					cl[0] = m_pCurrentEntity->curstate.rendercolor.r;
-					cl[1] = m_pCurrentEntity->curstate.rendercolor.g;
-					cl[2] = m_pCurrentEntity->curstate.rendercolor.b;
-				}
-				else
-				{
-					cl[0] = cl[1] = cl[2] = 255;
-				}
-
-				cl[3] = alpha;
-
-				if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                    glColor4ubv( cl );
-				else memcpy( m_arraycolor[m_nNumArrayVerts], cl, sizeof( cl ));
-			}
-
-			Vector av = m_verts[ptricmds[0]];
-
-			// scale mesh by normal
-			if( FBitSet( nDrawFlags, MESH_GLOWSHELL ))
-				av = av + m_norms[ptricmds[1]] * scale;
-
-			if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-                                glVertex3fv( av );
-			else m_arrayverts[m_nNumArrayVerts++] = av;
-		}
-
-		if( !FBitSet( nDrawFlags, MESH_DRAWARRAY ))
-            glEnd();
-	}
-
-	// we ends here for glBegin
-	if( !FBitSet( nDrawFlags, MESH_DRAWARRAY )) return;
-
-    glEnableClientState( GL_VERTEX_ARRAY );
-    glVertexPointer( 3, GL_FLOAT, 12, m_arrayverts );
-
-	if( !FBitSet( nDrawFlags, MESH_NONORMALS ))
-	{
-        glEnableClientState( GL_NORMAL_ARRAY );
-        glNormalPointer( GL_FLOAT, 12, m_arraynorms );
-	}
-
-	if( !FBitSet( nDrawFlags, MESH_NOCOLORS ))
-	{
-        glEnableClientState( GL_COLOR_ARRAY );
-        glColorPointer( 4, GL_UNSIGNED_BYTE, 0, m_arraycolor );
-	}
-
-	if( !FBitSet( nDrawFlags, MESH_NOTEXCOORDS ))
-	{
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-        glTexCoordPointer( 2, GL_FLOAT, 0, m_arraycoord );
-	}
-
-	// draw it now
-    glDrawElements( GL_TRIANGLES, m_nNumArrayElems, GL_UNSIGNED_INT, m_arrayelems );
-
-    glDisableClientState( GL_VERTEX_ARRAY );
-
-	if( !FBitSet( nDrawFlags, MESH_NONORMALS ))
-        glDisableClientState( GL_NORMAL_ARRAY );
-
-	if( !FBitSet( nDrawFlags, MESH_NOCOLORS ))
-        glDisableClientState( GL_COLOR_ARRAY );
-
-	if( !FBitSet( nDrawFlags, MESH_NOTEXCOORDS ))
-        glDisableClientState( GL_TEXTURE_COORD_ARRAY );
 }
 
 /*
@@ -3191,177 +2569,7 @@ StudioDrawMeshes
 */
 void CStudioModelRenderer :: StudioDrawMeshes( mstudiotexture_t *ptexture, short *pskinref, StudioPassMode drawPass )
 {
-	if( drawPass == STUDIO_PASS_AMBIENT )
-        glDisable( GL_TEXTURE_2D );
 
-	for( int i = 0; i < m_pSubModel->nummesh; i++ ) 
-	{
-		mstudiomesh_t *pmesh = (mstudiomesh_t *)((byte *)m_pStudioHeader + m_pSubModel->meshindex) + i;
-		short *ptricmds = (short *)((byte *)m_pStudioHeader + pmesh->triindex);
-		int iRenderMode = m_iRenderMode; // can be overwriting by texture flags
-
-		int nFaceFlags = ptexture[pskinref[pmesh->skinref]].flags;
-		float s = 1.0f / (float)ptexture[pskinref[pmesh->skinref]].width;
-		float t = 1.0f / (float)ptexture[pskinref[pmesh->skinref]].height;
-		int nDrawFlags = MESH_NONORMALS;
-
-		// check bounds
-		if( ptexture[pskinref[pmesh->skinref]].index < 0 || ptexture[pskinref[pmesh->skinref]].index > MAX_TEXTURES )
-			ptexture[pskinref[pmesh->skinref]].index = tr.defaultTexture;
-
-		if(( nFaceFlags & STUDIO_NF_ADDITIVE || iRenderMode == kRenderTransAdd ) && ( drawPass == STUDIO_PASS_AMBIENT || drawPass == STUDIO_PASS_LIGHT ))
-			continue;
-
-		if( drawPass == STUDIO_PASS_FOG )
-		{
-			if( nFaceFlags & STUDIO_NF_ADDITIVE || ( iRenderMode != kRenderTransAlpha && iRenderMode != kRenderNormal ))
-				continue;
-
-			nDrawFlags |= (MESH_NOCOLORS|MESH_NOTEXCOORDS);
-
-			if( nFaceFlags & STUDIO_NF_TRANSPARENT )
-                glDepthFunc( GL_EQUAL );
-		}
-		else if( drawPass == STUDIO_PASS_GLOWSHELL )
-		{
-			nDrawFlags |= (MESH_GLOWSHELL|MESH_CHROME|MESH_COLOR_ENTITY);
-			StudioSetRenderMode( kRenderTransAdd );
-		}
-		else if( drawPass == STUDIO_PASS_SHADOW )
-		{
-			// enable depth-mask on transparent textures
-			if( nFaceFlags & STUDIO_NF_TRANSPARENT )
-			{
-                glEnable( GL_ALPHA_TEST );
-                glEnable( GL_TEXTURE_2D );
-                glAlphaFunc( GL_GREATER, 0.0f );
-				GL_Bind( GL_TEXTURE0, ptexture[pskinref[pmesh->skinref]].index );
-				nDrawFlags |= MESH_NOCOLORS;
-			}
-			else nDrawFlags |= (MESH_NOCOLORS|MESH_NOTEXCOORDS);
-		}
-		else if( drawPass == STUDIO_PASS_AMBIENT )
-		{
-			// no diffuse texture! vertex lighting only
-
-			// enable depth-mask on transparent textures
-			if( nFaceFlags & STUDIO_NF_TRANSPARENT )
-			{
-                glEnable( GL_TEXTURE_2D );
-				GL_Bind( GL_TEXTURE0, ptexture[pskinref[pmesh->skinref]].index );
-				StudioSetRenderMode( kRenderTransAlpha );
-                glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB );
-                glTexEnvi( GL_TEXTURE_ENV, GL_SOURCE0_RGB_ARB, GL_PREVIOUS_ARB );
-                glTexEnvi( GL_TEXTURE_ENV, GL_COMBINE_RGB_ARB, GL_REPLACE );
-			}
-			else
-			{
-				StudioSetRenderMode( kRenderNormal );
-				nDrawFlags |= MESH_NOTEXCOORDS;
-                              }
-
-			if(!( nFaceFlags & STUDIO_NF_FULLBRIGHT ))
-			{
-				nDrawFlags |= MESH_COLOR_LIGHTING;
-			}
-		}
-		else if( drawPass == STUDIO_PASS_LIGHT )
-		{
-			nDrawFlags |= (MESH_NOCOLORS|MESH_NOTEXCOORDS);
-		}
-		else if( drawPass == STUDIO_PASS_DIFFUSE )
-		{
-			GL_Bind( GL_TEXTURE0, ptexture[pskinref[pmesh->skinref]].index );
-
-			if( nFaceFlags & STUDIO_NF_ADDITIVE || iRenderMode == kRenderTransAdd )
-			{
-				StudioSetRenderMode( kRenderTransAdd );
-				nDrawFlags |= MESH_ALPHA_ENTITY;
-
-				if( nFaceFlags & STUDIO_NF_CHROME )
-					nDrawFlags |= MESH_CHROME;
-
-				if(!( nFaceFlags & STUDIO_NF_FULLBRIGHT ))
-				{
-					nDrawFlags |= MESH_COLOR_LIGHTING;
-				}
-			}
-			else
-			{
-				if( nFaceFlags & STUDIO_NF_TRANSPARENT )
-                    glDepthFunc( GL_EQUAL );
-
-				if( nFaceFlags & STUDIO_NF_CHROME )
-					nDrawFlags |= MESH_CHROME;
-
-                glEnable( GL_BLEND );
-                glBlendFunc( R_OVERBRIGHT_SFACTOR(), GL_SRC_COLOR );
-                glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
-				nDrawFlags |= MESH_NOCOLORS;
-                              }
-            glDisable( GL_ALPHA_TEST );	// doesn't need alpha-test here
-		}
-		else if( drawPass == STUDIO_PASS_NORMAL )
-		{
-			GL_Bind( GL_TEXTURE0, ptexture[pskinref[pmesh->skinref]].index );
-
-			if( nFaceFlags & STUDIO_NF_TRANSPARENT )
-				iRenderMode = kRenderTransAlpha;
-			else if( nFaceFlags & STUDIO_NF_ADDITIVE )
-			{
-				iRenderMode = kRenderTransAdd;
-				nDrawFlags |= MESH_COLOR_LIGHTING|MESH_ALPHA_ENTITY;
-                              }
-
-			if( m_nForceFaceFlags & STUDIO_NF_CHROME )
-				nDrawFlags |= (MESH_GLOWSHELL|MESH_CHROME|MESH_COLOR_ENTITY);
-
-			if( nFaceFlags & STUDIO_NF_CHROME )
-				nDrawFlags |= MESH_CHROME;
-
-			if( m_iRenderMode == kRenderTransColor )
-				nDrawFlags |= MESH_COLOR_ENTITY;
-
-			if( !FBitSet( nDrawFlags, MESH_COLOR_ENTITY ))
-			{
-				if( iRenderMode == kRenderNormal || iRenderMode == kRenderTransAlpha || iRenderMode == kRenderTransTexture )
-					nDrawFlags |= MESH_COLOR_LIGHTING;
-			}
-
-			if( nFaceFlags & STUDIO_NF_FULLBRIGHT )
-			{
-				nDrawFlags &= ~MESH_COLOR_LIGHTING;
-			}
-
-			if( iRenderMode != kRenderTransAlpha && iRenderMode != kRenderNormal )
-				nDrawFlags |= MESH_ALPHA_ENTITY;
-
-			StudioSetRenderMode( iRenderMode );
-			R_SetupOverbright( true );
-                    }
-
-		StudioDrawMesh( ptricmds, s, t, nDrawFlags, nFaceFlags );
-
-		if( drawPass == STUDIO_PASS_SHADOW || drawPass == STUDIO_PASS_AMBIENT )
-		{
-			if( nFaceFlags & STUDIO_NF_TRANSPARENT )
-			{
-                glDisable( GL_ALPHA_TEST );
-                glDisable( GL_TEXTURE_2D );
-			}
-		}
-		else if( drawPass == STUDIO_PASS_DIFFUSE || drawPass == STUDIO_PASS_FOG )
-		{
-            glDepthFunc( GL_LEQUAL );
-		}
-		else if( drawPass == STUDIO_PASS_NORMAL )
-		{
-			R_SetupOverbright( false );
-		}
-	}
-
-	if( drawPass == STUDIO_PASS_AMBIENT )
-        glEnable( GL_TEXTURE_2D );
 }
 
 /*
@@ -3447,22 +2655,8 @@ void CStudioModelRenderer::StudioDrawPoints( void )
 
 		for( int i = 0; i < MAX_PLIGHTS; i++ )
 		{
-			plight_t *pl = &cl_plights[i];
 
-			if( pl->die < GET_CLIENT_TIME() || !pl->radius )
-				continue;
-
-			float dist = (pl->origin - origin).Length();
-
-			if( !dist || dist > ( pl->radius + studio_radius ))
-				continue;
-
-			if( R_CullSphereExt( pl->frustum, origin, studio_radius, pl->clipflags ))
-				continue;
-
-			R_BeginDrawProjection( pl );
 			StudioDrawMeshes( ptexture, pskinref, STUDIO_PASS_LIGHT );
-			R_EndDrawProjection();
 		}
 
 		// NOTE: last pass: merge computed color with diffuse texture
@@ -3514,108 +2708,7 @@ StudioDrawHulls
 */
 void CStudioModelRenderer::StudioDrawHulls( int iHitbox )
 {
-	float hullcolor[8][3] = 
-	{
-	{ 1.0f, 1.0f, 1.0f },
-	{ 1.0f, 0.5f, 0.5f },
-	{ 0.5f, 1.0f, 0.5f },
-	{ 1.0f, 1.0f, 0.5f },
-	{ 0.5f, 0.5f, 1.0f },
-	{ 1.0f, 0.5f, 1.0f },
-	{ 0.5f, 1.0f, 1.0f },
-	{ 1.0f, 1.0f, 1.0f },
-	};
 
-	float alpha;
-
-	if( r_drawentities->value == 4 )
-		alpha = 0.5f;
-	else alpha = 1.0f;
-
-	if( iHitbox >= 0 )
-        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-    glDisable( GL_TEXTURE_2D );
-
-	for( int i = 0; i < m_pStudioHeader->numhitboxes; i++ )
-	{
-		mstudiobbox_t *pbboxes = (mstudiobbox_t *)((byte *)m_pStudioHeader + m_pStudioHeader->hitboxindex);
-		Vector v[8], v2[8], bbmin, bbmax;
-
-		if( iHitbox >= 0 && iHitbox != i )
-			continue;
-
-		bbmin = pbboxes[i].bbmin;
-		bbmax = pbboxes[i].bbmax;
-
-		v[0][0] = bbmin[0];
-		v[0][1] = bbmax[1];
-		v[0][2] = bbmin[2];
-
-		v[1][0] = bbmin[0];
-		v[1][1] = bbmin[1];
-		v[1][2] = bbmin[2];
-
-		v[2][0] = bbmax[0];
-		v[2][1] = bbmax[1];
-		v[2][2] = bbmin[2];
-
-		v[3][0] = bbmax[0];
-		v[3][1] = bbmin[1];
-		v[3][2] = bbmin[2];
-
-		v[4][0] = bbmax[0];
-		v[4][1] = bbmax[1];
-		v[4][2] = bbmax[2];
-
-		v[5][0] = bbmax[0];
-		v[5][1] = bbmin[1];
-		v[5][2] = bbmax[2];
-
-		v[6][0] = bbmin[0];
-		v[6][1] = bbmax[1];
-		v[6][2] = bbmax[2];
-
-		v[7][0] = bbmin[0];
-		v[7][1] = bbmin[1];
-		v[7][2] = bbmax[2];
-
-		v2[0] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[0] );
-		v2[1] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[1] );
-		v2[2] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[2] );
-		v2[3] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[3] );
-		v2[4] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[4] );
-		v2[5] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[5] );
-		v2[6] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[6] );
-		v2[7] = m_pbonetransform[pbboxes[i].bone].VectorTransform( v[7] );
-
-		int k = (pbboxes[i].group % 8);
-
-		// set properly color for hull
-        glColor4f( hullcolor[k][0], hullcolor[k][1], hullcolor[k][2], alpha );
-
-        glBegin( GL_QUAD_STRIP );
-		for( int j = 0; j < 10; j++ )
-            glVertex3fv( v2[j & 7] );
-        glEnd( );
-	
-        glBegin( GL_QUAD_STRIP );
-        glVertex3fv( v2[6] );
-        glVertex3fv( v2[0] );
-        glVertex3fv( v2[4] );
-        glVertex3fv( v2[2] );
-        glEnd( );
-
-        glBegin( GL_QUAD_STRIP );
-        glVertex3fv( v2[1] );
-        glVertex3fv( v2[7] );
-        glVertex3fv( v2[3] );
-        glVertex3fv( v2[5] );
-        glEnd( );
-	}
-
-	if( iHitbox >= 0 )
-        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-    glEnable( GL_TEXTURE_2D );
 }
 
 /*
@@ -3626,40 +2719,7 @@ StudioDrawAbsBBox
 */
 void CStudioModelRenderer::StudioDrawAbsBBox( void )
 {
-	Vector bbox[8];
 
-	// looks ugly, skip
-	if( m_pCurrentEntity == GET_VIEWMODEL( ))
-		return;
-
-	if( !StudioComputeBBox( m_pCurrentEntity, bbox ))
-		return;
-
-    glDisable( GL_TEXTURE_2D );
-    glDisable( GL_DEPTH_TEST );
-
-    glColor4f( 1.0f, 0.0f, 0.0f, 1.0f );	// red bboxes for studiomodels
-    glBegin( GL_LINES );
-
-	for( int i = 0; i < 2; i += 1 )
-	{
-        glVertex3fv( bbox[i+0] );
-        glVertex3fv( bbox[i+2] );
-        glVertex3fv( bbox[i+4] );
-        glVertex3fv( bbox[i+6] );
-        glVertex3fv( bbox[i+0] );
-        glVertex3fv( bbox[i+4] );
-        glVertex3fv( bbox[i+2] );
-        glVertex3fv( bbox[i+6] );
-        glVertex3fv( bbox[i*2+0] );
-        glVertex3fv( bbox[i*2+1] );
-        glVertex3fv( bbox[i*2+4] );
-        glVertex3fv( bbox[i*2+5] );
-	}
-    glEnd();
-
-    glEnable( GL_TEXTURE_2D );
-    glEnable( GL_DEPTH_TEST );
 }
 
 /*
@@ -3670,98 +2730,12 @@ StudioDrawBones
 */
 void CStudioModelRenderer::StudioDrawBones( void )
 {
-	mstudiobone_t	*pbones = (mstudiobone_t *) ((byte *)m_pStudioHeader + m_pStudioHeader->boneindex);
-	Vector		point;
 
-    glDisable( GL_TEXTURE_2D );
-
-	for( int i = 0; i < m_pStudioHeader->numbones; i++ )
-	{
-		if( pbones[i].parent >= 0 )
-		{
-            glPointSize( 3.0f );
-            glColor3f( 1, 0.7f, 0 );
-            glBegin( GL_LINES );
-			
-			m_pbonetransform[pbones[i].parent].GetOrigin( point );
-            glVertex3fv( point );
-
-			m_pbonetransform[i].GetOrigin( point );
-            glVertex3fv( point );
-			
-            glEnd();
-
-            glColor3f( 0, 0, 0.8f );
-            glBegin( GL_POINTS );
-
-			if( pbones[pbones[i].parent].parent != -1 )
-			{
-				m_pbonetransform[pbones[i].parent].GetOrigin( point );
-                glVertex3fv( point );
-			}
-
-			m_pbonetransform[i].GetOrigin( point );
-            glVertex3fv( point );
-            glEnd();
-		}
-		else
-		{
-			// draw parent bone node
-            glPointSize( 5.0f );
-            glColor3f( 0.8f, 0, 0 );
-            glBegin( GL_POINTS );
-
-			m_pbonetransform[i].GetOrigin( point );
-            glVertex3fv( point );
-            glEnd();
-		}
-	}
-
-    glPointSize( 1.0f );
-    glEnable( GL_TEXTURE_2D );
 }
 
 void CStudioModelRenderer::StudioDrawAttachments( void )
 {
-    glDisable( GL_TEXTURE_2D );
-    glDisable( GL_DEPTH_TEST );
-	
-	for( int i = 0; i < m_pStudioHeader->numattachments; i++ )
-	{
-		mstudioattachment_t	*pattachments;
-		Vector v[4];
-
-		pattachments = (mstudioattachment_t *) ((byte *)m_pStudioHeader + m_pStudioHeader->attachmentindex);		
-		v[0] = m_pbonetransform[pattachments[i].bone].VectorTransform( pattachments[i].org );
-		v[1] = m_pbonetransform[pattachments[i].bone].VectorTransform( g_vecZero );
-		v[2] = m_pbonetransform[pattachments[i].bone].VectorTransform( g_vecZero );
-		v[3] = m_pbonetransform[pattachments[i].bone].VectorTransform( g_vecZero );
-		
-        glBegin( GL_LINES );
-        glColor3f( 1, 0, 0 );
-        glVertex3fv( v[0] );
-        glColor3f( 1, 1, 1 );
-        glVertex3fv (v[1] );
-        glColor3f( 1, 0, 0 );
-        glVertex3fv (v[0] );
-        glColor3f( 1, 1, 1 );
-        glVertex3fv (v[2] );
-        glColor3f( 1, 0, 0 );
-        glVertex3fv (v[0] );
-        glColor3f( 1, 1, 1 );
-        glVertex3fv( v[3] );
-        glEnd();
-
-        glPointSize( 5.0f );
-        glColor3f( 0, 1, 0 );
-        glBegin( GL_POINTS );
-        glVertex3fv( v[0] );
-        glEnd();
-        glPointSize( 1.0f );
-	}
-
-    glEnable( GL_TEXTURE_2D );
-    glEnable( GL_DEPTH_TEST );
+  
 }
 
 /*
@@ -3772,9 +2746,7 @@ StudioSetupRenderer
 */
 void CStudioModelRenderer::StudioSetupRenderer( int rendermode )
 {
-	m_iRenderMode = bound( 0, rendermode, kRenderTransAdd );
-    if(!( RI.params & RP_SHADOWVIEW )) glShadeModel( GL_SMOOTH ); // enable gouraud shading
-	if( glState.faceCull != GL_NONE ) GL_Cull( GL_FRONT );
+
 }
 
 /*
@@ -3785,13 +2757,7 @@ StudioRestoreRenderer
 */
 void CStudioModelRenderer::StudioRestoreRenderer( void )
 {
-    glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
-    glShadeModel( GL_FLAT );
 
-	// restore depthmask state for sprites etc
-	if( glState.drawTrans )
-        glDepthMask( GL_FALSE );
-    else glDepthMask( GL_TRUE );
 }
 
 /*
@@ -4426,60 +3392,7 @@ StudioRenderFinal
 */
 void CStudioModelRenderer::StudioRenderFinal(void)
 {
-	int rendermode = (m_nForceFaceFlags & STUDIO_NF_CHROME) ? kRenderTransAdd : m_pCurrentEntity->curstate.rendermode;
 
-	StudioSetupRenderer( rendermode );
-	
-	if( r_drawentities->value == 2 )
-	{
-		StudioDrawBones();
-	}
-	else if( r_drawentities->value == 3 )
-	{
-		StudioDrawHulls( -1 );
-	}
-	else
-	{
-		for( int i = 0 ; i < m_pStudioHeader->numbodyparts; i++ )
-		{
-			StudioSetupModel( i, (void **)&m_pBodyPart, (void **)&m_pSubModel );
-			StudioDrawPoints();
-		}
-
-		if( m_pCurrentEntity->modelhandle != INVALID_HANDLE && !( RI.params & RP_SHADOWVIEW ))
-		{
-			DrawDecal( m_ModelInstances[m_pCurrentEntity->modelhandle].m_DecalHandle, m_pStudioHeader );
-		}
-
-		if( !m_fDrawViewModel && !( RI.params & RP_SHADOWVIEW ) && !( m_nForceFaceFlags & STUDIO_NF_CHROME ) && R_SetupFogProjection( ))
-		{
-			for( i = 0 ; i < m_pStudioHeader->numbodyparts; i++ )
-			{
-				StudioSetupModel( i, (void **)&m_pBodyPart, (void **)&m_pSubModel );
-				StudioDrawPointsFog();
-			}
-
-            glDisable( GL_BLEND );
-			GL_CleanUpTextureUnits( 0 );
-		}
-
-		if( r_drawentities->value == 4 )
-		{
-			gEngfuncs.pTriAPI->RenderMode( kRenderTransAdd );
-			StudioDrawHulls( -1 );
-			gEngfuncs.pTriAPI->RenderMode( kRenderNormal );
-		}
-		else if( r_drawentities->value == 5 )
-		{
-			StudioDrawAbsBBox( );
-		}
-		else if( r_drawentities->value == 6 )
-		{
-			StudioDrawAttachments( );
-		}
-	}
-
-	StudioRestoreRenderer();
 }
 
 /*
@@ -4585,87 +3498,5 @@ DrawViewModel
 */
 void CStudioModelRenderer :: DrawViewModel( void )
 {
-	if( RI.refdef.onlyClientDraw || m_pCvarDrawViewModel->value == 0 )
-		return;
 
-	// ignore in thirdperson, camera view or client is died
-	if( RI.thirdPerson || RI.refdef.health <= 0 || !UTIL_IsLocal( RI.refdef.viewentity ))
-		return;
-
-	if( RI.params & RP_NONVIEWERREF )
-		return;
-
-	if( !IEngineStudio.Mod_Extradata( GET_VIEWMODEL()->model ))
-		return;
-
-	RI.currententity = GET_VIEWMODEL();
-	RI.currentmodel = RI.currententity->model;
-	if( !RI.currentmodel ) return;
-
-	SET_CURRENT_ENTITY( RI.currententity );
-	RI.currententity->curstate.renderamt = R_ComputeFxBlend( RI.currententity );
-
-	// hack the depth range to prevent view model from poking into walls
-    glDepthRange( gldepthmin, gldepthmin + 0.3f * ( gldepthmax - gldepthmin ));
-
-	// backface culling for left-handed weapons
-	if( m_pCvarHand->value == LEFT_HAND )
-		GL_FrontFace( !glState.frontFace );
-
-	// viewmodel can't properly animate without lerping
-	m_fDoInterp = true;
-	m_fDrawViewModel = true;
-	m_pbonetransform = NULL;
-
-	// bound FOV values
-	if( m_pCvarViewmodelFov->value < 50 )
-		gEngfuncs.Cvar_SetValue( "cl_viewmodel_fov", 50 );
-	else if( m_pCvarViewmodelFov->value > 130 )
-		gEngfuncs.Cvar_SetValue( "cl_viewmodel_fov", 120 );
-
-	// Find the offset our current FOV is from the default value
-	float flFOVOffset = gHUD.default_fov->value - (float)RI.refdef.fov_x;
-
-	// Adjust the viewmodel's FOV to move with any FOV offsets on the viewer's end
-	m_flViewmodelFov = m_pCvarViewmodelFov->value - flFOVOffset;
-
-	// calc local FOV
-	float x = (float)ScreenWidth / tan( m_flViewmodelFov / 360 * M_PI );
-
-	float fov_x = m_flViewmodelFov;
-	float fov_y = atan( (float)ScreenHeight / x ) * 360 / M_PI;
-
-	if( fov_x != RI.refdef.fov_x )
-	{
-		matrix4x4	oldProjectionMatrix = RI.projectionMatrix;
-		R_SetupProjectionMatrix( fov_x, fov_y, RI.projectionMatrix );
-
-        glMatrixMode( GL_PROJECTION );
-		GL_LoadMatrix( RI.projectionMatrix );
-
-		StudioDrawModel( STUDIO_RENDER );
-
-		// restore original matrix
-		RI.projectionMatrix = oldProjectionMatrix;
-
-        glMatrixMode( GL_PROJECTION );
-		GL_LoadMatrix( RI.projectionMatrix );
-	}
-	else
-	{
-		StudioDrawModel( STUDIO_RENDER );
-	}
-
-	// restore depth range
-    glDepthRange( gldepthmin, gldepthmax );
-
-	// backface culling for left-handed weapons
-	if( m_pCvarHand->value == LEFT_HAND )
-		GL_FrontFace( !glState.frontFace );
-
-	SET_CURRENT_ENTITY( NULL );
-	m_fDrawViewModel = false;
-	RI.currententity = NULL;
-	m_pbonetransform = NULL;
-	RI.currentmodel = NULL;
 }
