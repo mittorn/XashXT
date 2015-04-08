@@ -1073,21 +1073,8 @@ static render_interface_t gRenderInterface =
 
 int HUD_GetRenderInterface( int version, render_api_t *renderfuncs, render_interface_t *callback )
 {
-	if ( !callback || !renderfuncs || version != CL_RENDER_INTERFACE_VERSION )
-	{
 		return FALSE;
-	}
 
-	size_t iImportSize = sizeof( render_interface_t );
-	size_t iExportSize = sizeof( render_api_t );
+//something from deleted ext render
 
-	// copy new physics interface
-	memcpy( &gRenderfuncs, renderfuncs, iExportSize );
-
-	// fill engine callbacks
-	memcpy( callback, &gRenderInterface, iImportSize );
-
-	g_fRenderInitialized = TRUE;
-
-	return TRUE;
 }

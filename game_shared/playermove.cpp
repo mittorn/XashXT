@@ -15,7 +15,7 @@
 
 
 #ifndef _WIN32
-#define strnicmp strncmp
+#define strnicmp strncasecmp
 #endif
 
 #include <assert.h>
