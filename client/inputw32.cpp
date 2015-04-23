@@ -30,7 +30,14 @@
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_gamecontroller.h>
 #endif
-
+#if defined (__ANDROID__)
+	#define USE_EVDEV
+#endif
+#ifdef USE_EVDEV
+#define pause pause_
+#include <fcntl.h>
+#include <linux/input.h>
+#endif
 // in_win.c -- windows 95 mouse code
 
 #define MOUSE_BUTTON_COUNT	5
@@ -130,7 +137,64 @@ cvar_t	*joy_wwhack2;
 
 int			joy_avail, joy_advancedinit, joy_haspov;
 
+#ifdef USE_EVDEV
+int evdev_open, mouse_fd, evdev_dx, evdev_dy;
 
+cvar_t	*evdev_mousepath;
+cvar_t	*evdev_grab;
+
+
+int KeycodeFromEvdev(int keycode);
+
+/*
+===========
+Evdev_OpenMouse_f
+===========
+For shitty systems that cannot provide relative mouse axes
+*/
+void Evdev_OpenMouse_f ( void )
+{
+	/* Android users can try open all devices starting from last
+	by listing all of them in script as they cannot write udev rules
+	for example:
+		evdev_mousepath /dev/input/event10
+		evdev_mouseopen
+		evdev_mousepath /dev/input/event9
+		evdev_mouseopen
+		evdev_mousepath /dev/input/event8
+		evdev_mouseopen
+		etc
+	So we will not print annoying messages that it is already open
+	*/
+	if ( evdev_open ) return;
+#ifdef __ANDROID__ // use root to grant access to evdev
+	char chmodstr[ 255 ] = "su -c chmod 666 ";
+	strcat( chmodstr, evdev_mousepath->string );
+	system(chmodstr);
+#endif
+	mouse_fd = open ( evdev_mousepath->string, O_RDONLY | O_NONBLOCK );
+	if ( mouse_fd < 0 )
+	{
+		gEngfuncs.Con_Printf ( "Could not open input device %s\n", evdev_mousepath->string );
+		return;
+	}
+	gEngfuncs.Con_Printf ( "Input device %s opened sucessfully\n", evdev_mousepath->string );
+	evdev_open = 1;
+}
+/*
+===========
+Evdev_OpenClose_f
+===========
+Allow open other mouse
+*/
+void Evdev_CloseMouse_f ( void )
+{
+	if ( !evdev_open ) return;
+	evdev_open = 0;
+	close( mouse_fd );
+}
+
+#endif
 /*
 ===========
 Force_CenterView_f
@@ -155,6 +219,14 @@ IN_ActivateMouse
 */
 void IN_ActivateMouse( void )
 {
+	//gEngfuncs.Con_Printf ( "ActivateMouse\n" );
+#ifdef USE_EVDEV
+	if( evdev_open && ( evdev_grab->value == 1 ) )
+	{
+		ioctl( mouse_fd, EVIOCGRAB, (void*) 1);
+		gEngfuncs.Key_Event( K_ESCAPE, 0 ); //Do not leave ESC down
+	}
+#endif
 	if( mouseinitialized )
 	{
 #ifdef _WIN32
@@ -173,6 +245,14 @@ IN_DeactivateMouse
 */
 void IN_DeactivateMouse( void )
 {
+	//gEngfuncs.Con_Printf ( "DeactivateMouse\n" );
+#ifdef USE_EVDEV
+	if( evdev_open && ( evdev_grab->value == 1 ) )
+	{
+		ioctl( mouse_fd, EVIOCGRAB, (void*) 0);
+		gEngfuncs.Key_Event( K_ESCAPE, 0 ); //Do not leave ESC down
+	}
+#endif
 	if( mouseinitialized )
 	{
 #ifdef _WIN32
@@ -312,12 +392,20 @@ void IN_MouseMove( float frametime, usercmd_t *cmd )
         my = current_pos.y - gEngfuncs.GetWindowCenterY() + my_accum;
 #else
         int deltaX, deltaY;
+#ifdef USE_EVDEV
+		if ( !evdev_open )
+			SDL_GetRelativeMouseState( &deltaX, &deltaY );
+		else
+			deltaX=evdev_dx, deltaY=evdev_dy;
+#else
         SDL_GetRelativeMouseState( &deltaX, &deltaY );
+#endif
                    current_pos.x = deltaX;
                    current_pos.y = deltaY;
 
                    mx = current_pos.x + mx_accum;
                    my = current_pos.y + my_accum;
+
 
 #endif
 
@@ -402,7 +490,14 @@ void IN_Accumulate( void )
 
 #else
         int deltaX, deltaY;
+#ifdef USE_EVDEV
+		if ( !evdev_open )
+			SDL_GetRelativeMouseState( &deltaX, &deltaY );
+		else
+			deltaX=evdev_dx, deltaY=evdev_dy;
+#else
         SDL_GetRelativeMouseState( &deltaX, &deltaY );
+#endif
 
 
         mx_accum += deltaX;
@@ -598,6 +693,30 @@ void IN_Commands (void)
 {
 	int		i, key_index;
 
+#ifdef USE_EVDEV
+	if ( evdev_open )
+	{
+		struct input_event ev;
+		evdev_dx = evdev_dy = 0;
+		while ( read( mouse_fd, &ev, 16) == 16 )
+		{
+			if ( ev.type == EV_REL )
+			{
+				switch ( ev.code )
+				{
+					case REL_X: evdev_dx += ev.value;
+					break;
+					case REL_Y: evdev_dy += ev.value;
+					break;
+				}
+			}
+			else if ( ( ev.type == EV_KEY ) && (evdev_grab->value == 1.0 )  && mouseactive )
+			{
+				gEngfuncs.Key_Event ( KeycodeFromEvdev( ev.code ) , ev.value);
+			}
+		}
+	}
+#endif
 	if (!joy_avail)
 	{
 		return;
@@ -903,9 +1022,18 @@ void IN_Init( void )
 	joy_wwhack1				= gEngfuncs.pfnRegisterVariable ( "joywwhack1", "0.0", 0 );
 	joy_wwhack2				= gEngfuncs.pfnRegisterVariable ( "joywwhack2", "0.0", 0 );
 
+#ifdef USE_EVDEV
+	evdev_mousepath			= gEngfuncs.pfnRegisterVariable ( "evdev_mousepath", "", 0 );
+	evdev_grab				= gEngfuncs.pfnRegisterVariable ( "evdev_grab", "0", 0 );
+#endif
 	ADD_COMMAND ("force_centerview", Force_CenterView_f);
 	gEngfuncs.pfnAddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
 
+#ifdef USE_EVDEV
+	gEngfuncs.pfnAddCommand ("evdev_mouseopen", Evdev_OpenMouse_f);
+	gEngfuncs.pfnAddCommand ("evdev_mouseclose", Evdev_CloseMouse_f);
+	evdev_open = 0;
+#endif
 	IN_StartupMouse ();
 	IN_StartupJoystick ();
 }
