@@ -261,8 +261,10 @@ to modify the data.
 returns 1 if anything has been changed, 0 otherwise.
 ==========================
 */
+void IN_Commands();
 int HUD_UpdateClientData( client_data_t *pcldata, float flTime )
 {
+	IN_Commands();
 	return gHUD.UpdateClientData( pcldata, flTime );
 }
 
