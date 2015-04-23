@@ -90,7 +90,9 @@ void CHud :: VidInit( void )
 			client_sprite_t *p = m_pSpriteList;
 			m_iSpriteCount = 0;
 
-			for( int j = 0; j < m_iSpriteCountAllRes; j++ )
+			int j = 0;
+
+			for( j = 0; j < m_iSpriteCountAllRes; j++ )
 			{
 				if( p->iRes == m_iRes )
 					m_iSpriteCount++;

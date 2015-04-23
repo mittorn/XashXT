@@ -669,7 +669,8 @@ cl_entity_t *V_FindIntermisionSpot( struct ref_params_s *pparams )
 	cl_entity_t *ent;
 
 	// found intermission point
-	for( int i = 0, j = 0; i < pparams->max_entities; i++ )
+	int i, j;
+	for( i = 0, j = 0; i < pparams->max_entities; i++ )
 	{
 		ent = GET_ENTITY( i );
 

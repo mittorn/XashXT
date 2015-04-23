@@ -293,7 +293,9 @@ void HUD_EjectShell( const struct mstudioevent_s *event, const struct cl_entity_
 		return;
 	}
 
-	for( int i = 0; i < 3; i++ )
+	int i = 0;
+
+	for( i = 0; i < 3; i++ )
 	{
 		if( angles[i] < -180 ) angles[i] += 360; 
 		else if( angles[i] > 180 ) angles[i] -= 360;

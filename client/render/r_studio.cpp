@@ -1273,7 +1273,8 @@ void CStudioModelRenderer :: StudioMergeBones( model_t *m_pSubModel )
 
 	for( int i = 0; i < m_pStudioHeader->numbones; i++ ) 
 	{
-		for( int j = 0; j < m_nCachedBones; j++ )
+		int j;
+		for( j = 0; j < m_nCachedBones; j++ )
 		{
 			if( !Q_stricmp( pbones[i].name, m_nCachedBoneNames[j] ))
 			{
@@ -1979,7 +1980,8 @@ bool CStudioModelRenderer::IsModelInstanceValid( word handle, bool skipDecals )
 //-----------------------------------------------------------------------------
 int CStudioModelRenderer::GetDecalMaterial( DecalModelList_t& decalList, int decalTexture )
 {
-	for( word j = decalList.m_FirstMaterial; j != m_DecalMaterial.InvalidIndex(); j = m_DecalMaterial.Next( j ))
+	word j;
+	for( j = decalList.m_FirstMaterial; j != m_DecalMaterial.InvalidIndex(); j = m_DecalMaterial.Next( j ))
 	{
 		if( m_DecalMaterial[j].decalTexture == decalTexture )
 		{

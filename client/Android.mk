@@ -11,9 +11,7 @@ APP_PLATFORM := android-12
 
 LOCAL_CONLYFLAGS += -std=c99
 
-LOCAL_CFLAGS += -fsigned-char -O2
-
-LOCAL_CPPFLAGS += -fpermissive -DCLIENT_DLL=1
+LOCAL_CFLAGS += -fsigned-char -O2 -DCLIENT_DLL=1
 
 LOCAL_C_INCLUDES := $(SDL_PATH)/include \
 		 $(LOCAL_PATH)/. \
@@ -65,6 +63,6 @@ LOCAL_SRC_FILES := ammo.cpp \
 
 LOCAL_SHARED_LIBRARIES += SDL2 
 
-LOCAL_LDLIBS := -llog
+#LOCAL_LDLIBS := -llog
 
 include $(BUILD_SHARED_LIBRARY)

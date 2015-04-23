@@ -2,12 +2,14 @@
 # nicknekit: xashxt client port
 ######################################################################
 
+QT -= core widgets
+
 TEMPLATE = lib
 TARGET = client
 DEPENDPATH += . hl
 INCLUDEPATH += . ./render ../common ../engine ../game_shared
-LIBS += -lSDL2 -lGLEW -lGL -lGLU
-QMAKE_CXXFLAGS = -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-parameter -fpermissive -DCLIENT_DLL=1
+LIBS += -lSDL2
+QMAKE_CXXFLAGS = -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-parameter -DCLIENT_DLL=1
 
 # Input
 HEADERS += ammo.h \

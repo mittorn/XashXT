@@ -133,7 +133,9 @@ int CHudScoreboard :: Draw( float fTime )
 	}
 
 	// clear out team scores
-	for( int i = 1; i <= m_iNumTeams; i++ )
+	int i, j;
+
+	for( i = 1; i <= m_iNumTeams; i++ )
 	{
 		if( !g_TeamInfo[i].scores_overriden )
 			g_TeamInfo[i].frags = g_TeamInfo[i].deaths = 0;
@@ -150,7 +152,7 @@ int CHudScoreboard :: Draw( float fTime )
 			continue; // skip over players who are not in a team
 
 		// find what team this player is in
-		for( int j = 1; j <= m_iNumTeams; j++ )
+		for( j = 1; j <= m_iNumTeams; j++ )
 		{
 			if( !Q_stricmp( g_PlayerExtraInfo[i].teamname, g_TeamInfo[j].name ))
 				break;
@@ -429,7 +431,8 @@ int CHudScoreboard :: MsgFunc_TeamInfo( const char *pszName, int iSize, void *pb
 	// rebuild the list of teams
 
 	// clear out player counts from teams
-	for( int i = 1; i <= m_iNumTeams; i++ )
+	int i, j;
+	for( i = 1; i <= m_iNumTeams; i++ )
 	{
 		g_TeamInfo[i].players = 0;
 	}
@@ -448,7 +451,7 @@ int CHudScoreboard :: MsgFunc_TeamInfo( const char *pszName, int iSize, void *pb
 			continue; // skip over players who are not in a team
 
 		// is this player in an existing team?
-		for( int j = 1; j <= m_iNumTeams; j++ )
+		for( j = 1; j <= m_iNumTeams; j++ )
 		{
 			if( g_TeamInfo[j].name[0] == '\0' )
 				break;
@@ -461,7 +464,7 @@ int CHudScoreboard :: MsgFunc_TeamInfo( const char *pszName, int iSize, void *pb
 		{
 			// they aren't in a listed team, so make a new one
 			// search through for an empty team slot
-			for( int j = 1; j <= m_iNumTeams; j++ )
+			for( j = 1; j <= m_iNumTeams; j++ )
 			{
 				if( g_TeamInfo[j].name[0] == '\0' )
 					break;
@@ -500,7 +503,8 @@ int CHudScoreboard :: MsgFunc_TeamScore( const char *pszName, int iSize, void *p
 	char *TeamName = READ_STRING();
 
 	// find the team matching the name
-	for( int i = 1; i <= m_iNumTeams; i++ )
+	int i = 0;
+	for( i = 1; i <= m_iNumTeams; i++ )
 	{
 		if( !Q_stricmp( TeamName, g_TeamInfo[i].name ))
 			break;
