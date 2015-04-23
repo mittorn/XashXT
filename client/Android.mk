@@ -37,6 +37,7 @@ LOCAL_SRC_FILES := ammo.cpp \
            hud_update.cpp \
            input.cpp \
            inputw32.cpp \
+           input_evdevkey.cpp \
            ../game_shared/mathlib.cpp \
            ../game_shared/matrix.cpp \
            menu.cpp \
