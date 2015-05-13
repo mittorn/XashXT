@@ -29,7 +29,8 @@ HEADERS += ammo.h \
            render/r_studio.h \
            render/r_view.h \
            utils.h \
-           ../game_shared/vector.h
+           ../game_shared/vector.h \
+	   input.h
 
 SOURCES += ammo.cpp \
            ammo_secondary.cpp \
@@ -47,6 +48,7 @@ SOURCES += ammo.cpp \
            hud_update.cpp \
            input.cpp \
            inputw32.cpp \
+	   input_touch.cpp \
            ../game_shared/mathlib.cpp \
            ../game_shared/matrix.cpp \
            menu.cpp \

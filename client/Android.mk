@@ -38,6 +38,7 @@ LOCAL_SRC_FILES := ammo.cpp \
            input.cpp \
            inputw32.cpp \
            input_evdevkey.cpp \
+	   input_touch.cpp \
            ../game_shared/mathlib.cpp \
            ../game_shared/matrix.cpp \
            menu.cpp \
