@@ -994,10 +994,10 @@ IN_Move
 */
 void IN_Move( float frametime, usercmd_t *cmd )
 {
-#ifndef __ANDROID__
+//#ifndef __ANDROID__
 	IN_MouseMove( frametime, cmd );
 	IN_JoyMove ( frametime, cmd);
-#endif
+//#endif
 
 #ifdef __ANDROID__
 	IN_MobileMove ( frametime, cmd);
