@@ -981,6 +981,12 @@ void IN_JoyMove ( float frametime, usercmd_t *cmd )
 
 	gEngfuncs.SetViewAngles( (float *)viewangles );
 }
+
+#ifdef __ANDROID__
+void IN_MobileAngles(float *viewangles);
+void IN_MobileMove ( float frametime, usercmd_t *cmd);
+#endif
+
 /*
 ===========
 IN_Move
@@ -988,8 +994,28 @@ IN_Move
 */
 void IN_Move( float frametime, usercmd_t *cmd )
 {
+#ifndef __ANDROID__
 	IN_MouseMove( frametime, cmd );
 	IN_JoyMove ( frametime, cmd);
+#endif
+
+#ifdef __ANDROID__
+	IN_MobileMove ( frametime, cmd);
+
+	vec3_t viewangles;
+
+	gEngfuncs.GetViewAngles( (float *)viewangles );
+	IN_MobileAngles((float *)viewangles);
+	// bounds check pitch
+	if (viewangles[PITCH] > cl_pitchdown->value)
+		viewangles[PITCH] = cl_pitchdown->value;
+	if (viewangles[PITCH] < -cl_pitchup->value)
+		viewangles[PITCH] = -cl_pitchup->value;
+
+	gEngfuncs.SetViewAngles( (float *)viewangles );
+
+	V_StopPitchDrift();
+#endif
 }
 
 /*
