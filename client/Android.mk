@@ -65,6 +65,10 @@ LOCAL_SRC_FILES := ammo.cpp \
 
 LOCAL_SHARED_LIBRARIES += SDL2 
 
+#This is a hack, needed to get Android touch screen callbacks
+#But xash is gaurenteed to be loaded
+LOCAL_SHARED_LIBRARIES += xash
+
 #LOCAL_LDLIBS := -llog
 
 include $(BUILD_SHARED_LIBRARY)
