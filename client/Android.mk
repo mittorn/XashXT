@@ -11,7 +11,15 @@ APP_PLATFORM := android-12
 
 LOCAL_CONLYFLAGS += -std=c99
 
-LOCAL_CFLAGS += -fsigned-char -O2 -DCLIENT_DLL=1
+LOCAL_CFLAGS += $(CFLAGS_OPT)
+ifeq ($(TARGET_ARCH),arm)
+LOCAL_CFLAGS += $(CFLAGS_OPT_ARM)
+endif
+ifeq ($(TARGET_ARCH),x86)
+LOCAL_CFLAGS += $(CFLAGS_OPT_X86)
+endif
+
+LOCAL_CFLAGS += -fsigned-char -DCLIENT_DLL=1
 
 LOCAL_C_INCLUDES := $(SDL_PATH)/include \
 		 $(LOCAL_PATH)/. \
