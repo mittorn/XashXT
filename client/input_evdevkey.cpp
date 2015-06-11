@@ -17,8 +17,10 @@ GNU General Public License for more details.
 
 #include <fcntl.h>
 #include <linux/input.h>
-#include <SDL_keyboard.h>
 #include "keydefs.h"
+#ifdef XASH_SDL
+#include <SDL_keyboard.h>
+
 
 static SDL_Scancode EVDEV_Keycodes[] = {
     SDL_SCANCODE_UNKNOWN,       /*  KEY_RESERVED        0 */
@@ -271,18 +273,19 @@ static SDL_Scancode EVDEV_Keycodes[] = {
     SDL_SCANCODE_UNKNOWN,       /*  KEY_RFKILL      247 Key that controls all radios */
     SDL_SCANCODE_UNKNOWN,       /*  KEY_MICMUTE     248 Mute / unmute the microphone */
 };
-
+#endif
 int KeycodeFromEvdev(int keycode)
 {
-    SDL_Scancode scancode = SDL_SCANCODE_UNKNOWN;
-	
+    
 	if (keycode >= BTN_MOUSE && keycode < BTN_MOUSE + 5 )
 	{
 		if(keycode == BTN_MOUSE + 2) keycode--;
 		if(keycode == BTN_MOUSE + 1) keycode++;
 		return K_MOUSE1 + keycode - BTN_MOUSE;
 	}
-
+#ifdef XASH_SDL
+	SDL_Scancode scancode = SDL_SCANCODE_UNKNOWN;
+	
     if (keycode < sizeof(EVDEV_Keycodes)) {
         scancode = EVDEV_Keycodes[keycode];
     }
@@ -358,4 +361,7 @@ int KeycodeFromEvdev(int keycode)
 		keynum = scancode - 41;
 	}
 	return keynum;
+#else
+	return 0;	
+#endif
 }

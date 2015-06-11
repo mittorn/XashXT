@@ -22,13 +22,14 @@
 #include "r_view.h"
 #include "keydefs.h"
 #include <mathlib.h>
-
+#ifdef XASH_SDL
 #ifdef __ANDROID__
 #include <SDL_mouse.h>
 #include <SDL_gamecontroller.h>
 #else
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_gamecontroller.h>
+#endif
 #endif
 #if defined (__ANDROID__)
 	#define USE_EVDEV
@@ -76,7 +77,7 @@ static int	mouseactive;
 static int	mouseinitialized;
 static int	mouseparmsvalid;
 
-
+#ifdef XASH_SDL
 // joystick defines and variables
 // where should defines be moved?
 #define JOY_ABSOLUTE_AXIS	0x00000000		// control like a joystick
@@ -136,7 +137,7 @@ cvar_t	*joy_wwhack1;
 cvar_t	*joy_wwhack2;
 
 int			joy_avail, joy_advancedinit, joy_haspov;
-
+#endif
 #ifdef USE_EVDEV
 int evdev_open, mouse_fd, evdev_dx, evdev_dy;
 
@@ -393,12 +394,14 @@ void IN_MouseMove( float frametime, usercmd_t *cmd )
 #else
         int deltaX, deltaY;
 #ifdef USE_EVDEV
-		if ( !evdev_open )
-			SDL_GetRelativeMouseState( &deltaX, &deltaY );
+		if ( evdev_open )
+			deltaX=evdev_dx, deltaY=evdev_dy;		
+#endif
+#ifdef XASH_SDL
+#ifdef USE_EVDEV
 		else
-			deltaX=evdev_dx, deltaY=evdev_dy;
-#else
-        SDL_GetRelativeMouseState( &deltaX, &deltaY );
+#endif
+        	SDL_GetRelativeMouseState( &deltaX, &deltaY );
 #endif
                    current_pos.x = deltaX;
                    current_pos.y = deltaY;
@@ -491,12 +494,14 @@ void IN_Accumulate( void )
 #else
         int deltaX, deltaY;
 #ifdef USE_EVDEV
-		if ( !evdev_open )
-			SDL_GetRelativeMouseState( &deltaX, &deltaY );
+		if ( evdev_open )
+			deltaX=evdev_dx, deltaY=evdev_dy;		
+#endif
+#ifdef XASH_SDL
+#ifdef USE_EVDEV
 		else
-			deltaX=evdev_dx, deltaY=evdev_dy;
-#else
-        SDL_GetRelativeMouseState( &deltaX, &deltaY );
+#endif
+        	SDL_GetRelativeMouseState( &deltaX, &deltaY );
 #endif
 
 
@@ -527,7 +532,7 @@ void IN_ClearStates( void )
 	my_accum = 0;
 	mouse_oldbuttonstate = 0;
 }
-
+#ifdef XASH_SDL
 void OpenJoystick ( int i )
 {
 	s_pJoystick = SDL_GameControllerOpen( i );
@@ -683,7 +688,7 @@ void Joy_AdvancedUpdate_f (void)
 	}
 }
 
-
+#endif
 /*
 ===========
 IN_Commands
@@ -717,6 +722,7 @@ void IN_Commands (void)
 		}
 	}
 #endif
+#ifdef XASH_SDL
 	if (!joy_avail)
 	{
 		return;
@@ -780,9 +786,10 @@ void IN_Commands (void)
 		}
 		joy_oldpovstate = povstate;
 	}
+#endif
 }
 
-
+#ifdef XASH_SDL
 /*
 ===============
 IN_ReadJoystick
@@ -981,7 +988,7 @@ void IN_JoyMove ( float frametime, usercmd_t *cmd )
 
 	gEngfuncs.SetViewAngles( (float *)viewangles );
 }
-
+#endif
 #ifdef __ANDROID__
 void IN_MobileAngles(float *viewangles);
 void IN_MobileMove ( float frametime, usercmd_t *cmd);
@@ -994,11 +1001,10 @@ IN_Move
 */
 void IN_Move( float frametime, usercmd_t *cmd )
 {
-//#ifndef __ANDROID__
 	IN_MouseMove( frametime, cmd );
+#ifdef XASH_SDL
 	IN_JoyMove ( frametime, cmd);
-//#endif
-
+#endif
 #ifdef __ANDROID__
 	IN_MobileMove ( frametime, cmd);
 
@@ -1027,7 +1033,7 @@ void IN_Init( void )
 {
 	m_filter		= CVAR_REGISTER ( "m_filter","0", FCVAR_ARCHIVE );
 	sensitivity	= CVAR_REGISTER ( "sensitivity","3", FCVAR_ARCHIVE ); // user mouse sensitivity setting.
-
+#ifdef XASH_SDL
 	in_joystick				= gEngfuncs.pfnRegisterVariable ( "joystick","0", FCVAR_ARCHIVE );
 	joy_name				= gEngfuncs.pfnRegisterVariable ( "joyname", "joystick", 0 );
 	joy_advanced			= gEngfuncs.pfnRegisterVariable ( "joyadvanced", "0", 0 );
@@ -1047,19 +1053,18 @@ void IN_Init( void )
 	joy_yawsensitivity		= gEngfuncs.pfnRegisterVariable ( "joyyawsensitivity", "-1.0", 0 );
 	joy_wwhack1				= gEngfuncs.pfnRegisterVariable ( "joywwhack1", "0.0", 0 );
 	joy_wwhack2				= gEngfuncs.pfnRegisterVariable ( "joywwhack2", "0.0", 0 );
-
+	gEngfuncs.pfnAddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
+	IN_StartupJoystick ();
+#endif
+	
 #ifdef USE_EVDEV
 	evdev_mousepath			= gEngfuncs.pfnRegisterVariable ( "evdev_mousepath", "", 0 );
 	evdev_grab				= gEngfuncs.pfnRegisterVariable ( "evdev_grab", "0", 0 );
-#endif
-	ADD_COMMAND ("force_centerview", Force_CenterView_f);
-	gEngfuncs.pfnAddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
-
-#ifdef USE_EVDEV
 	gEngfuncs.pfnAddCommand ("evdev_mouseopen", Evdev_OpenMouse_f);
 	gEngfuncs.pfnAddCommand ("evdev_mouseclose", Evdev_CloseMouse_f);
 	evdev_open = 0;
 #endif
+	ADD_COMMAND ("force_centerview", Force_CenterView_f);
 	IN_StartupMouse ();
-	IN_StartupJoystick ();
+
 }
