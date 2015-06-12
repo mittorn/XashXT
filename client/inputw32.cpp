@@ -392,10 +392,10 @@ void IN_MouseMove( float frametime, usercmd_t *cmd )
         mx = current_pos.x - gEngfuncs.GetWindowCenterX() + mx_accum;
         my = current_pos.y - gEngfuncs.GetWindowCenterY() + my_accum;
 #else
-        int deltaX=0, deltaY=0;
+        int deltaX = 0, deltaY = 0;
 #ifdef USE_EVDEV
 		if ( evdev_open )
-			deltaX = evdev_dx, delta Y =evdev_dy;		
+			deltaX = evdev_dx, deltaY = evdev_dy;
 #endif
 #ifdef XASH_SDL
 #ifdef USE_EVDEV
@@ -495,7 +495,7 @@ void IN_Accumulate( void )
         int deltaX = 0, deltaY = 0;
 #ifdef USE_EVDEV
 		if ( evdev_open )
-			deltaX=evdev_dx, deltaY=evdev_dy;		
+			deltaX = evdev_dx, deltaY = evdev_dy;
 #endif
 #ifdef XASH_SDL
 #ifdef USE_EVDEV
