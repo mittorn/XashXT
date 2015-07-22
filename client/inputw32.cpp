@@ -31,9 +31,6 @@
 #include <SDL2/SDL_gamecontroller.h>
 #endif
 #endif
-#if defined (__ANDROID__)
-	#define USE_EVDEV
-#endif
 #ifdef USE_EVDEV
 #define pause pause_
 #include <fcntl.h>
