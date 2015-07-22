@@ -6,13 +6,13 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := client
-ifeq ($(XASH_SDL),1)
-APP_PLATFORM := android-12
-LOCAL_SHARED_LIBRARIES += SDL2 
-LOCAL_CFLAGS += -DXASH_SDL
-else
+#ifeq ($(XASH_SDL),1)
+#APP_PLATFORM := android-12
+#LOCAL_SHARED_LIBRARIES += SDL2 
+#LOCAL_CFLAGS += -DXASH_SDL
+#else
 APP_PLATFORM := android-8
-endif
+#endif
 LOCAL_CONLYFLAGS += -std=c99
 
 LOCAL_CFLAGS += $(CFLAGS_OPT)
