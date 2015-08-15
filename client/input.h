@@ -56,4 +56,4 @@ void IN_Cancel( void );
 void IN_Impulse( void );
 
 
-#endif INPUT_H
+#endif //INPUT_H

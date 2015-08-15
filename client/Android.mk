@@ -55,7 +55,7 @@ LOCAL_SRC_FILES := ammo.cpp \
            hud_redraw.cpp \
            hud_update.cpp \
            input.cpp \
-           inputw32.cpp \
+           input_xash3d.cpp \
            input_touch.cpp \
            ../game_shared/mathlib.cpp \
            ../game_shared/matrix.cpp \
