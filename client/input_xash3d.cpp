@@ -58,7 +58,7 @@ void IN_ClientMoveEvent( float forwardmove, float sidemove )
 void IN_ClientLookEvent( float relyaw, float relpitch )
 {
 	rel_yaw += relyaw;
-	rel_pitch += rel_pitch;
+	rel_pitch += relpitch;
 }
 // Rotate camera and add move values to usercmd
 void IN_Move( float frametime, usercmd_t *cmd )
@@ -83,16 +83,11 @@ void IN_Move( float frametime, usercmd_t *cmd )
 			rel_yaw *= sensitivity->value;
 			rel_pitch *= sensitivity->value;
 		}
-		if(( in_strafe.state & 1 ) || ( lookstrafe->value && ( in_mlook.state & 1 )))
-			cmd->sidemove += m_side->value * rel_yaw;
-		else
-			viewangles[YAW] -= m_yaw->value * rel_yaw;
 
-		if(( in_mlook.state & 1 ) && !( in_strafe.state & 1 ))
-		{
-			viewangles[PITCH] += m_pitch->value * rel_pitch;
-			viewangles[PITCH] = bound( -cl_pitchup->value, viewangles[PITCH], cl_pitchdown->value );
-		}
+		viewangles[YAW] += m_yaw->value * rel_yaw;
+
+		viewangles[PITCH] += m_pitch->value * rel_pitch;
+		viewangles[PITCH] = bound( -cl_pitchup->value, viewangles[PITCH], cl_pitchdown->value );
 	}
 	float rgfl[3];
 	viewangles.CopyToArray( rgfl );
@@ -113,8 +108,8 @@ void IN_Move( float frametime, usercmd_t *cmd )
 		moveflags &= ~S;
 	else if( !( moveflags & S ) )
 	{
-		IN_RightUp();
-		IN_LeftUp();
+		IN_MoverightUp();
+		IN_MoveleftUp();
 		moveflags |= S;
 	}
 
@@ -141,22 +136,22 @@ void IN_Move( float frametime, usercmd_t *cmd )
 	if ( ac_sidemove > 0.9 && !( moveflags & R ))
 	{
 		moveflags |= R;
-		IN_RightDown();
+		IN_MoverightDown();
 	}
 	else if ( ac_sidemove < 0.9 && ( moveflags & R ))
 	{
 		moveflags &= ~R;
-		IN_RightUp();
+		IN_MoverightUp();
 	}
 	if ( ac_sidemove < -0.9 && !( moveflags & L ))
 	{
 		moveflags |= L;
-		IN_LeftDown();
+		IN_MoveleftDown();
 	}
 	else if ( ac_sidemove > -0.9 && ( moveflags & L ))
 	{
 		moveflags &= ~L;
-		IN_LeftUp();
+		IN_MoveleftUp();
 	}
 
 	ac_sidemove = ac_forwardmove = rel_pitch = rel_yaw = 0;	
