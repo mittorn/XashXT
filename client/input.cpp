@@ -618,7 +618,8 @@ void CL_CreateMove( float frametime, usercmd_t *cmd, int active )
 		}
 
 		// allow mice and other controllers to add their inputs
-		if( !CL_IsDead( )) IN_Move( frametime, cmd );
+		//if( !CL_IsDead( )) 
+			IN_Move( frametime, cmd );
 	}
 
 	cmd->impulse = in_impulse;
@@ -633,11 +634,11 @@ void CL_CreateMove( float frametime, usercmd_t *cmd, int active )
 	gEngfuncs.GetViewAngles( viewangles );
 
 	// Set current view angles.
-	if( CL_IsDead( ))
+	/*if( CL_IsDead( ))
 	{
 		cmd->viewangles = oldangles;
 	}
-	else
+	else*/
 	{
 		cmd->viewangles = viewangles;
 		oldangles = viewangles;

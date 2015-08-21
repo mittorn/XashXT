@@ -84,9 +84,9 @@ void IN_Move( float frametime, usercmd_t *cmd )
 			rel_pitch *= sensitivity->value;
 		}
 
-		viewangles[YAW] += m_yaw->value * rel_yaw;
+		viewangles[YAW] += rel_yaw;
 
-		viewangles[PITCH] += m_pitch->value * rel_pitch;
+		viewangles[PITCH] += rel_pitch;
 		viewangles[PITCH] = bound( -cl_pitchup->value, viewangles[PITCH], cl_pitchdown->value );
 	}
 	float rgfl[3];

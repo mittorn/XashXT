@@ -65,7 +65,7 @@ touchbutton_t buttons[] =
 	{0.8, 1.0, 0.6, 0.8, true, touch_tap, IN_TouchDuck, 0},
 }; // array of buttons
 
-extern "C" void IN_TouchEvent( bool down, int fingerID, float x, float y, float dx, float dy )
+extern "C" int IN_ClientTouchEvent( bool down, int fingerID, float x, float y, float dx, float dy )
 {
 	// Find suitable button
 	/*for( int i = 0; i < sizeof( buttons ); i++ )
@@ -79,4 +79,5 @@ extern "C" void IN_TouchEvent( bool down, int fingerID, float x, float y, float 
 			break;
 		}
 	}*/
+	return 0;
 }
