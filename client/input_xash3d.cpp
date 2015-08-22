@@ -66,6 +66,7 @@ void IN_Move( float frametime, usercmd_t *cmd )
 	static uint moveflags = T | S;
 	Vector viewangles;
 	gEngfuncs.GetViewAngles( viewangles );
+	bool fLadder = gEngfuncs.GetLocalPlayer()->curstate.movetype == MOVETYPE_FLY;
 
 	if( in_mlook.state & 1 )
 	{
@@ -85,6 +86,12 @@ void IN_Move( float frametime, usercmd_t *cmd )
 		}
 
 		viewangles[YAW] += rel_yaw;
+		if( fLadder )
+		{
+			if( ( ac_sidemove < 1.0 ) && ( ac_sidemove > -1.0 ) )
+				viewangles[YAW] -= ac_sidemove * 5;
+			ac_sidemove = 0;
+		}
 
 		viewangles[PITCH] += rel_pitch;
 		viewangles[PITCH] = bound( -cl_pitchup->value, viewangles[PITCH], cl_pitchdown->value );
@@ -105,7 +112,14 @@ void IN_Move( float frametime, usercmd_t *cmd )
 		moveflags |= T;
 	}
 	if( ac_sidemove )
+	{
 		moveflags &= ~S;
+		if( fLadder )
+		{
+			IN_MoverightUp();
+			IN_MoveleftUp();
+		}
+	}
 	else if( !( moveflags & S ) )
 	{
 		IN_MoverightUp();
