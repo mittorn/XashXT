@@ -51,8 +51,9 @@ float rel_pitch;
 
 void IN_ClientMoveEvent( float forwardmove, float sidemove )
 {
-	ac_forwardmove += forwardmove;
-	ac_sidemove += sidemove;
+	//gEngfuncs.Con_Printf("IN_MoveEvent\n");
+	ac_forwardmove = forwardmove;
+	ac_sidemove = sidemove;
 }
 
 void IN_ClientLookEvent( float relyaw, float relpitch )
@@ -67,6 +68,8 @@ void IN_Move( float frametime, usercmd_t *cmd )
 	Vector viewangles;
 	gEngfuncs.GetViewAngles( viewangles );
 	bool fLadder = gEngfuncs.GetLocalPlayer()->curstate.movetype == MOVETYPE_FLY;
+	//if(ac_forwardmove || ac_sidemove)
+	//gEngfuncs.Con_Printf("Move: %f %f %f %f\n", ac_forwardmove, ac_sidemove, rel_pitch, rel_yaw);
 
 	if( in_mlook.state & 1 )
 	{
@@ -195,22 +198,27 @@ void IN_MouseEvent( int mstate )
 
 void IN_ClearStates ( void )
 {
+	//gEngfuncs.Con_Printf("IN_ClearStates\n");
 }
 
 void IN_ActivateMouse ( void )
 {
+	//gEngfuncs.Con_Printf("IN_ActivateMouse\n");
 }
 
 void IN_DeactivateMouse ( void )
 {
+	//gEngfuncs.Con_Printf("IN_DeactivateMouse\n");
 }
 
 void IN_Accumulate ( void )
 {
+	//gEngfuncs.Con_Printf("IN_Accumulate\n");
 }
 
 void IN_Commands ( void )
 {
+	//gEngfuncs.Con_Printf("IN_Commands\n");
 }
 
 void IN_Shutdown ( void )
