@@ -15,19 +15,10 @@ APP_PLATFORM := android-8
 #endif
 LOCAL_CONLYFLAGS += -std=c99
 
-LOCAL_CFLAGS += $(CFLAGS_OPT)
+include $(XASH3D_CONFIG)
+
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a-hard)
-LOCAL_CFLAGS += $(CFLAGS_OPT_ARM) -mfloat-abi=hard -mhard-float
 LOCAL_MODULE_FILENAME = libclient_hardfp
-endif
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-LOCAL_CFLAGS += $(CFLAGS_OPT_ARM) -mfloat-abi=softfp
-endif
-ifeq ($(TARGET_ARCH_ABI),armeabi)
-LOCAL_CFLAGS += $(CFLAGS_OPT_ARMv5)
-endif
-ifeq ($(TARGET_ARCH_ABI),x86)
-LOCAL_CFLAGS += $(CFLAGS_OPT_X86)
 endif
 
 LOCAL_CFLAGS += -fsigned-char -DCLIENT_DLL=1
